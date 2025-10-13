@@ -1,0 +1,43 @@
+name: Update Repomix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/**'
+      - 'docs/**'
+      - 'packages/**'
+  workflow_dispatch:
+
+jobs:
+  update-repomix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Generate Repomix
+        run: |
+          npx repomix --output repomix/nexcell-codebase.xml --ignore "repomix/**,node_modules/**,.git/**"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet repomix/nexcell-codebase.xml || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if changed
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add repomix/nexcell-codebase.xml
+          git commit -m "chore: update repomix codebase snapshot [skip ci]"
+          git push
