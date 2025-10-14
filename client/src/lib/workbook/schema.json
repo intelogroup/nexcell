@@ -1,0 +1,330 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nexcell.dev/workbook-json-schema-v1.0.json",
+  "title": "Workbook JSON Schema v1.0",
+  "description": "Schema for Nexcell workbook JSON format",
+  "type": "object",
+  "required": ["schemaVersion", "workbookId", "meta", "sheets"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Schema version for migration support",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "workbookId": {
+      "type": "string",
+      "description": "Persistent UUID for the workbook",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "meta": {
+      "type": "object",
+      "required": ["createdAt", "modifiedAt"],
+      "properties": {
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "company": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "modifiedAt": { "type": "string", "format": "date-time" },
+        "locale": { "type": "string" },
+        "timezone": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sheets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/SheetJSON" }
+    },
+    "workbookProperties": {
+      "type": "object",
+      "properties": {
+        "defaultRowHeight": { "type": "number", "minimum": 0 },
+        "defaultColWidth": { "type": "number", "minimum": 0 },
+        "workbookView": {
+          "type": "object",
+          "properties": {
+            "firstSheet": { "type": "integer", "minimum": 0 },
+            "activeTab": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "namedRanges": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": { "type": "string" }
+      }
+    },
+    "computed": {
+      "type": "object",
+      "properties": {
+        "hfCache": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": { "$ref": "#/definitions/ComputedValue" }
+          }
+        },
+        "dependencyGraph": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "actionLog": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Action" }
+    },
+    "aiPlans": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "exportWarnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warnings from export operations about unsupported features"
+    }
+  },
+  "definitions": {
+    "SheetJSON": {
+      "type": "object",
+      "required": ["id", "name", "grid"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "grid": {
+          "type": "object",
+          "required": ["rowCount", "colCount"],
+          "properties": {
+            "rowCount": { "type": "integer", "minimum": 1 },
+            "colCount": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "rows": {
+          "type": "object",
+          "patternProperties": {
+            "^\\d+$": {
+              "type": "object",
+              "properties": {
+                "height": { "type": "number", "minimum": 0 },
+                "hidden": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "cols": {
+          "type": "object",
+          "patternProperties": {
+            "^\\d+$": {
+              "type": "object",
+              "properties": {
+                "width": { "type": "number", "minimum": 0 },
+                "hidden": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "cells": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Z]+\\d+$": { "$ref": "#/definitions/Cell" }
+          }
+        },
+        "mergedRanges": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]+\\d+:[A-Z]+\\d+$" }
+        },
+        "namedRanges": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": { "type": "string" }
+          }
+        },
+        "comments": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Z]+\\d+$": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Comment" }
+            }
+          }
+        },
+        "dataValidations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/DataValidation" }
+        },
+        "conditionalFormats": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ConditionalFormat" }
+        },
+        "properties": { "$ref": "#/definitions/SheetProperties" }
+      }
+    },
+    "Cell": {
+      "type": "object",
+      "properties": {
+        "raw": { "type": ["string", "number", "boolean", "null"] },
+        "formula": { "type": "string", "pattern": "^=.*" },
+        "dataType": { "enum": ["string", "number", "boolean", "date", "formula", "error"] },
+        "computed": { "$ref": "#/definitions/ComputedValue" },
+        "numFmt": { "type": "string" },
+        "style": { "$ref": "#/definitions/CellStyle" },
+        "hyperlink": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" },
+            "tooltip": { "type": "string" }
+          },
+          "required": ["url"]
+        },
+        "notes": { "type": "string" },
+        "metadata": { "type": "object" },
+        "readOnly": { "type": "boolean" },
+        "commentIds": { "type": "array", "items": { "type": "string" } },
+        "validationId": { "type": "string" },
+        "arrayFormula": { "type": "boolean" },
+        "spilledFrom": { "type": "string", "pattern": "^[A-Z]+\\d+$" }
+      }
+    },
+    "ComputedValue": {
+      "type": "object",
+      "required": ["v", "ts"],
+      "properties": {
+        "v": { "type": ["string", "number", "boolean", "null"] },
+        "t": { "enum": ["n", "s", "b", "e", "d"] },
+        "ts": { "type": "string", "format": "date-time" },
+        "hfVersion": { "type": "string" },
+        "computedBy": { "type": "string" },
+        "error": { "type": "string" }
+      }
+    },
+    "CellStyle": {
+      "type": "object",
+      "properties": {
+        "bold": { "type": "boolean" },
+        "italic": { "type": "boolean" },
+        "underline": { "type": "boolean" },
+        "strikethrough": { "type": "boolean" },
+        "color": { "type": "string" },
+        "bgColor": { "type": "string" },
+        "fontSize": { "type": "number" },
+        "fontFamily": { "type": "string" },
+        "alignment": {
+          "type": "object",
+          "properties": {
+            "horizontal": { "enum": ["left", "center", "right", "justify"] },
+            "vertical": { "enum": ["top", "middle", "bottom"] },
+            "wrapText": { "type": "boolean" },
+            "indent": { "type": "number" }
+          }
+        },
+        "border": {
+          "type": "object",
+          "properties": {
+            "top": { "$ref": "#/definitions/BorderStyle" },
+            "bottom": { "$ref": "#/definitions/BorderStyle" },
+            "left": { "$ref": "#/definitions/BorderStyle" },
+            "right": { "$ref": "#/definitions/BorderStyle" }
+          }
+        }
+      }
+    },
+    "BorderStyle": {
+      "type": "object",
+      "properties": {
+        "style": { "enum": ["thin", "medium", "thick", "dashed", "dotted", "double"] },
+        "color": { "type": "string" }
+      }
+    },
+    "DataValidation": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "id": { "type": "string" },
+        "range": { "type": "string" },
+        "type": { "enum": ["list", "whole", "decimal", "date", "textLength", "custom"] },
+        "operator": { "enum": ["between", "notBetween", "equal", "notEqual", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual"] },
+        "values": { "type": "array", "items": { "type": "string" } },
+        "formula1": { "type": "string" },
+        "formula2": { "type": "string" },
+        "showError": { "type": "boolean" },
+        "errorTitle": { "type": "string" },
+        "errorMessage": { "type": "string" },
+        "showInputMessage": { "type": "boolean" },
+        "inputTitle": { "type": "string" },
+        "inputMessage": { "type": "string" }
+      }
+    },
+    "ConditionalFormat": {
+      "type": "object",
+      "required": ["id", "range", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "range": { "type": "string" },
+        "type": { "enum": ["expression", "cellIs", "colorScale", "dataBar", "iconSet", "top10", "duplicateValues", "uniqueValues"] },
+        "priority": { "type": "number" },
+        "stopIfTrue": { "type": "boolean" },
+        "formula": { "type": "string" },
+        "operator": { "type": "string" },
+        "values": { "type": "array" },
+        "colorScale": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "string" },
+            "mid": { "type": "string" },
+            "max": { "type": "string" }
+          }
+        },
+        "style": { "$ref": "#/definitions/CellStyle" }
+      }
+    },
+    "Comment": {
+      "type": "object",
+      "required": ["id", "author", "text", "createdAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "author": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "modifiedAt": { "type": "string", "format": "date-time" },
+        "resolved": { "type": "boolean" },
+        "replies": { "type": "array", "items": { "$ref": "#/definitions/Comment" } }
+      }
+    },
+    "SheetProperties": {
+      "type": "object",
+      "properties": {
+        "tabColor": { "type": "string" },
+        "defaultRowHeight": { "type": "number" },
+        "defaultColWidth": { "type": "number" },
+        "freeze": {
+          "type": "object",
+          "properties": {
+            "row": { "type": "number" },
+            "col": { "type": "number" }
+          }
+        },
+        "zoom": { "type": "number" },
+        "gridLines": { "type": "boolean" },
+        "showHeaders": { "type": "boolean" },
+        "rtl": { "type": "boolean" }
+      }
+    },
+    "Action": {
+      "type": "object",
+      "required": ["id", "type", "timestamp", "sheetId", "payload"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["editCell", "deleteCell", "insertRow", "deleteRow", "insertCol", "deleteCol", "merge", "unmerge", "setStyle", "setFormat", "setRange"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user": { "type": "string" },
+        "sheetId": { "type": "string" },
+        "payload": { "type": "object" },
+        "inverse": { "$ref": "#/definitions/Action" }
+      }
+    }
+  }
+}

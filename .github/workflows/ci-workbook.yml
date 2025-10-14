@@ -1,0 +1,54 @@
+name: CI - Workbook Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-workbook:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm ci
+      
+      - name: Run Priority-1 Round-Trip Tests (GATE)
+        working-directory: ./client
+        run: |
+          echo "🚨 Priority-1 Gate: These tests MUST pass before AI Plan→Act"
+          npm test -- roundtrip.formatting.test
+          npm test -- roundtrip.layout.test
+          npm test -- roundtrip.full.test
+      
+      - name: Run HyperFormula Hydration Tests
+        working-directory: ./client
+        run: npm test -- hyperformula.hydration.test
+      
+      - name: Run All Workbook Tests
+        working-directory: ./client
+        run: npm test -- src/lib/workbook
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: client/test-results/
+          retention-days: 7

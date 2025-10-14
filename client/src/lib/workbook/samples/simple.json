@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "workbookId": "550e8400-e29b-41d4-a716-446655440000",
+  "meta": {
+    "title": "Simple Sample Workbook",
+    "author": "Nexcell",
+    "createdAt": "2025-10-14T19:00:00.000Z",
+    "modifiedAt": "2025-10-14T19:00:00.000Z"
+  },
+  "sheets": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Sheet1",
+      "visible": true,
+      "grid": {
+        "rowCount": 1000,
+        "colCount": 50
+      },
+      "cells": {
+        "A1": {
+          "raw": "Hello World",
+          "dataType": "string",
+          "style": {
+            "bold": true,
+            "fontSize": 14
+          }
+        },
+        "A2": {
+          "raw": 42,
+          "dataType": "number",
+          "numFmt": "#,##0"
+        },
+        "A3": {
+          "formula": "=A2*2",
+          "dataType": "formula",
+          "computed": {
+            "v": 84,
+            "t": "n",
+            "ts": "2025-10-14T19:00:00.000Z",
+            "hfVersion": "2.6.0",
+            "computedBy": "hf-2.6.0"
+          },
+          "numFmt": "#,##0"
+        }
+      }
+    }
+  ]
+}
