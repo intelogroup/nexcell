@@ -8,6 +8,7 @@ import type { WorkbookJSON, SheetJSON, Cell } from './types';
 import {
   createWorkbook,
   addSheet,
+  deleteSheet,
   getCell,
   getWorkbookStats,
   cloneWorkbook,
@@ -38,6 +39,7 @@ export interface UseWorkbookReturn {
   addNewSheet: (name?: string) => SheetJSON;
   switchSheet: (sheetId: string) => void;
   renameSheet: (sheetId: string, name: string) => void;
+  deleteSheetById: (sheetId: string) => void;
   
   // Workbook operations
   updateWorkbook: (updater: (wb: WorkbookJSON) => WorkbookJSON) => void;
@@ -148,11 +150,19 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
 
   // Switch sheet
   const switchSheet = useCallback((sheetId: string) => {
-    const sheet = workbook.sheets.find(s => s.id === sheetId);
-    if (sheet) {
+    const sheetIndex = workbook.sheets.findIndex(s => s.id === sheetId);
+    if (sheetIndex >= 0) {
       setCurrentSheetId(sheetId);
+      
+      // Update activeTab in workbookProperties for Excel compatibility
+      updateWorkbook(wb => {
+        if (wb.workbookProperties?.workbookView) {
+          wb.workbookProperties.workbookView.activeTab = sheetIndex;
+        }
+        return wb;
+      });
     }
-  }, [workbook.sheets]);
+  }, [workbook.sheets, updateWorkbook]);
 
   // Rename sheet
   const renameSheet = useCallback((sheetId: string, name: string) => {
@@ -164,6 +174,18 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
       return wb;
     });
   }, [updateWorkbook]);
+
+  // Delete sheet
+  const deleteSheetById = useCallback((sheetId: string) => {
+    updateWorkbook(wb => {
+      const success = deleteSheet(wb, sheetId);
+      if (success && currentSheetId === sheetId) {
+        // Switch to first sheet if we deleted the current one
+        setCurrentSheetId(wb.sheets[0]?.id || '');
+      }
+      return wb;
+    });
+  }, [updateWorkbook, currentSheetId]);
 
   // Reset workbook
   const resetWorkbook = useCallback((newWorkbook?: WorkbookJSON) => {
@@ -285,6 +307,7 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
     addNewSheet,
     switchSheet,
     renameSheet,
+    deleteSheetById,
     updateWorkbook,
     resetWorkbook,
     undoLast,

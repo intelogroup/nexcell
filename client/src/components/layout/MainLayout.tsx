@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Header } from './Header';
 import { SettingsDialog } from './SettingsDialog';
+import { SheetTabs } from './SheetTabs';
 import { ChatInterface } from '../chat/ChatInterface';
 import { CanvasRenderer } from '../canvas/CanvasRenderer';
 import { type Message } from '@/lib/types';
@@ -9,8 +10,8 @@ import {
   workbookToCellArray,
   createCellFromInput,
   toAddress,
-  SheetJSAdapter,
 } from '@/lib/workbook';
+import { computeWorkbook } from '@/lib/workbook/hyperformula';
 import { parseAICommand, describeAction, EXAMPLE_COMMANDS } from '@/lib/ai/aiService';
 import { parseCommandWithAI, convertToWorkbookActions, findNextEmptyRow } from '@/lib/ai/openrouter';
 
@@ -23,6 +24,10 @@ export function MainLayout() {
     setCell,
     clearCell,
     updateWorkbook,
+    addNewSheet,
+    switchSheet,
+    renameSheet,
+    deleteSheetById,
   } = useWorkbook();
 
   const [workbookName, setWorkbookName] = useState(() => workbook.meta.title || 'Untitled');
@@ -265,8 +270,31 @@ export function MainLayout() {
 
   const handleExportXLSX = async () => {
     try {
-      const adapter = new SheetJSAdapter();
-      const buffer = await adapter.export(workbook);
+      // Ensure formulas are computed and cached so exported files have correct cached values
+      try {
+        const result = computeWorkbook(workbook);
+        console.log('Recompute before export:', result);
+      } catch (e) {
+        console.warn('Recompute before export failed:', e);
+      }
+
+      // Prefer ExcelJSAdapter for higher fidelity exports when available
+      let buffer: ArrayBuffer;
+      let warnings: string[] = [];
+      try {
+        const { ExcelJSAdapter } = await import('@/lib/workbook/adapters/exceljs');
+        const adapter = new ExcelJSAdapter();
+        buffer = await adapter.export(workbook);
+        // adapters may push warnings into workbook.exportWarnings
+        warnings = workbook.exportWarnings || [];
+      } catch (e) {
+        console.warn('ExcelJS adapter failed or not available, falling back to SheetJS:', e);
+        // Fallback to SheetJS
+        const { SheetJSAdapter } = await import('@/lib/workbook/adapters/sheetjs');
+        const adapter = new SheetJSAdapter();
+        buffer = await adapter.export(workbook);
+        warnings = workbook.exportWarnings || [];
+      }
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
@@ -278,6 +306,11 @@ export function MainLayout() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      // Surface any export warnings to the user
+      if (warnings && warnings.length > 0) {
+        console.warn('Export warnings:', warnings);
+        alert('Export completed with warnings. See console for details.');
+      }
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export workbook. See console for details.');
@@ -309,10 +342,22 @@ export function MainLayout() {
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <CanvasRenderer 
-            data={cells}
-            onCellEdit={handleCellEdit}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-hidden">
+            <CanvasRenderer 
+              data={cells}
+              onCellEdit={handleCellEdit}
+            />
+          </div>
+          
+          {/* Sheet Tabs */}
+          <SheetTabs
+            sheets={workbook.sheets}
+            currentSheetId={currentSheetId}
+            onSheetChange={switchSheet}
+            onAddSheet={addNewSheet}
+            onRenameSheet={renameSheet}
+            onDeleteSheet={deleteSheetById}
           />
         </div>
       </div>

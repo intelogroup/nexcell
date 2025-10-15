@@ -1,8 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { type CellData } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { FormulaBar } from './FormulaBar';
+import { FormatToolbar } from './FormatToolbar';
+import { StyleToolbar } from './StyleToolbar';
+import { excelTheme } from '../../lib/excel-theme';
 
 interface CanvasRendererProps {
   data: CellData[][];
@@ -61,6 +64,17 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
     setEditValue('');
   };
 
+  // Placeholder handlers for formatting (to be connected to workbook API)
+  const handleStyleChange = (style: any) => {
+    console.log('Style change requested:', style, 'for cell:', selectedCell);
+    // TODO: Connect to workbook style API
+  };
+
+  const handleNumberFormatChange = (numFmt: string) => {
+    console.log('Number format change requested:', numFmt, 'for cell:', selectedCell);
+    // TODO: Connect to workbook number format API
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!selectedCell && !editingCell) return;
 
@@ -114,7 +128,32 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
     : null;
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div 
+      className="flex flex-col h-full"
+      style={{ backgroundColor: excelTheme.canvas.background }}
+    >
+      {/* Format Toolbar */}
+      <FormatToolbar
+        selectedCell={selectedCell ? {
+          address: `${getColumnLabel(selectedCell.col)}${selectedCell.row + 1}`,
+          style: currentCellValue?.formatting as any, // TODO: Align CellFormatting and CellStyle types
+          numFmt: currentCellValue?.formatting?.numberFormat,
+        } : undefined}
+        onStyleChange={handleStyleChange}
+        onNumberFormatChange={handleNumberFormatChange}
+        disabled={!selectedCell}
+      />
+
+      {/* Style Toolbar */}
+      <StyleToolbar
+        selectedCell={selectedCell ? {
+          address: `${getColumnLabel(selectedCell.col)}${selectedCell.row + 1}`,
+          style: currentCellValue?.formatting as any, // TODO: Align CellFormatting and CellStyle types
+        } : undefined}
+        onStyleChange={handleStyleChange}
+        disabled={!selectedCell}
+      />
+
       {/* Formula Bar */}
       <FormulaBar
         value={editingCell 
@@ -134,7 +173,8 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
       {/* Canvas */}
       <div
         ref={parentRef}
-        className="flex-1 overflow-auto border-t border-gray-200"
+        className="flex-1 overflow-auto"
+        style={{ borderTop: `1px solid ${excelTheme.canvas.gridLines}` }}
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >

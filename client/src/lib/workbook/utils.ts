@@ -111,6 +111,33 @@ export function addSheet(
 }
 
 /**
+ * Delete a sheet by ID
+ */
+export function deleteSheet(
+  workbook: WorkbookJSON,
+  sheetId: string
+): boolean {
+  const index = workbook.sheets.findIndex((s) => s.id === sheetId);
+  if (index === -1) return false;
+  
+  // Don't allow deleting the last sheet
+  if (workbook.sheets.length <= 1) return false;
+  
+  workbook.sheets.splice(index, 1);
+  workbook.meta.modifiedAt = new Date().toISOString();
+  
+  // Update activeTab if needed
+  if (workbook.workbookProperties?.workbookView) {
+    const activeTab = workbook.workbookProperties.workbookView.activeTab || 0;
+    if (activeTab >= workbook.sheets.length) {
+      workbook.workbookProperties.workbookView.activeTab = workbook.sheets.length - 1;
+    }
+  }
+  
+  return true;
+}
+
+/**
  * Get sheet by ID
  */
 export function getSheet(workbook: WorkbookJSON, sheetId: string): SheetJSON | undefined {
@@ -272,26 +299,68 @@ export function cloneWorkbook(workbook: WorkbookJSON): WorkbookJSON {
 }
 
 /**
- * Get workbook statistics
+ * Safe JSON.stringify that handles circular references and DOM elements
+ * Use this for logging/debugging, NOT for data serialization
+ */
+export function safeStringify(obj: any, indent = 2): string {
+  const seen = new WeakSet();
+  try {
+    return JSON.stringify(obj, function(key, value) {
+      // Drop React internal fields
+      if (typeof key === "string" && key.startsWith("__react")) return undefined;
+      
+      // Handle DOM elements
+      if (typeof value === "object" && value !== null) {
+        if (value instanceof Element) {
+          return `[DOMElement:${value.tagName}]`;
+        }
+        // Handle circular references
+        if (seen.has(value)) {
+          return "[Circular]";
+        }
+        seen.add(value);
+      }
+      return value;
+    }, indent);
+  } catch (error) {
+    return `[Stringify Error: ${error instanceof Error ? error.message : String(error)}]`;
+  }
+}
+
+/**
+ * Get workbook statistics (safe - no DOM/React serialization)
  */
 export function getWorkbookStats(workbook: WorkbookJSON) {
   let totalCells = 0;
   let totalFormulas = 0;
   let totalStyles = 0;
+  let totalMerges = 0;
   
   for (const sheet of workbook.sheets) {
     const cells = Object.values(sheet.cells || {});
     totalCells += cells.length;
     totalFormulas += cells.filter((c) => c.formula).length;
     totalStyles += cells.filter((c) => c.style || c.numFmt).length;
+    totalMerges += (sheet.mergedRanges || []).length;
   }
   
+  // Safe size estimation without JSON.stringify (which can fail on DOM/React objects)
+  const estimatedSize = 
+    workbook.sheets.reduce((acc, sheet) => 
+      acc + Object.keys(sheet.cells || {}).length * 100, // rough estimate per cell
+      1000 // base workbook overhead
+    );
+  
   return {
+    title: workbook.meta?.title || "",
     sheets: workbook.sheets.length,
+    sheetNames: workbook.sheets.map(s => s.name),
     cells: totalCells,
     formulas: totalFormulas,
     styledCells: totalStyles,
-    size: JSON.stringify(workbook).length,
+    mergedRanges: totalMerges,
+    estimatedSize, // rough estimate, not exact
+    modifiedAt: workbook.meta?.modifiedAt || "",
   };
 }
 

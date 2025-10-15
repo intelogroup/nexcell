@@ -1,3 +1,4 @@
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/layout';
 import { RoundTripTestPage } from './components/test';
 
@@ -7,10 +8,18 @@ function App() {
   const testMode = params.get('test');
 
   if (testMode === 'roundtrip') {
-    return <RoundTripTestPage />;
+    return (
+      <ErrorBoundary>
+        <RoundTripTestPage />
+      </ErrorBoundary>
+    );
   }
 
-  return <MainLayout />;
+  return (
+    <ErrorBoundary>
+      <MainLayout />
+    </ErrorBoundary>
+  );
 }
 
 export default App;

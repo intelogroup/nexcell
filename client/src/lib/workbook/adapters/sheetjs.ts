@@ -41,6 +41,13 @@ export class SheetJSAdapter implements ExportAdapter {
       XLSX.utils.book_append_sheet(wb, ws, sheet.name);
     }
     
+    // Set workbook view properties (activeTab)
+    if (workbook.workbookProperties?.workbookView) {
+      wb.Workbook = wb.Workbook || {};
+      wb.Workbook.Views = wb.Workbook.Views || [{}];
+      (wb.Workbook.Views[0] as any).activeTab = workbook.workbookProperties.workbookView.activeTab || 0;
+    }
+    
     // Store warnings in workbook for persistence
     if (warnings.length > 0) {
       workbook.exportWarnings = workbook.exportWarnings || [];
@@ -74,6 +81,15 @@ export class SheetJSAdapter implements ExportAdapter {
     // Create new workbook JSON
     const workbook = createWorkbook(wb.Props?.Title || "Workbook");
     workbook.sheets = []; // clear default sheet
+    
+    // Import workbook view properties (activeTab)
+    if (wb.Workbook?.Views?.[0]) {
+      if (workbook.workbookProperties) {
+        workbook.workbookProperties.workbookView = workbook.workbookProperties.workbookView || {};
+        const view = wb.Workbook.Views[0] as any;
+        workbook.workbookProperties.workbookView.activeTab = view.activeTab || 0;
+      }
+    }
     
     // Import each sheet
     for (const sheetName of wb.SheetNames) {

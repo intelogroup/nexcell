@@ -43,6 +43,19 @@ export class ExcelJSAdapter implements ExportAdapter {
     wb.modified = new Date(workbook.meta.modifiedAt);
     wb.title = workbook.meta.title || "Workbook";
 
+    // Set workbook view properties (activeTab, firstSheet)
+    if (workbook.workbookProperties?.workbookView) {
+      wb.views = [{
+        activeTab: workbook.workbookProperties.workbookView.activeTab || 0,
+        firstSheet: workbook.workbookProperties.workbookView.firstSheet || 0,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        visibility: 'visible' as const,
+      }];
+    }
+
     // Add sheets
     for (const sheet of workbook.sheets) {
       const ws = wb.addWorksheet(sheet.name);

@@ -473,9 +473,11 @@ export const createSetRangeOp = ops.createSetRangeOp;
 // ============================================================================
 
 export const addSheet = utils.addSheet;
+export const deleteSheet = utils.deleteSheet;
 export const getSheet = utils.getSheet;
 export const getSheetByName = utils.getSheetByName;
 export const generateId = utils.generateId;
+export const safeStringify = utils.safeStringify;
 
 export const parseAddress = utils.parseAddress;
 export const toAddress = utils.toAddress;
