@@ -1,0 +1,44 @@
+name: Workbook Tests
+
+on:
+  pull_request:
+    paths:
+      - 'client/**'
+      - '.github/workflows/workbook-tests.yml'
+  push:
+    branches:
+      - main
+      - 'ghcopilot/**'
+
+jobs:
+  test-client-workbook:
+    name: Client Workbook Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd client
+          npm ci
+
+      - name: Type-check
+        run: |
+          npm --prefix client run type-check
+
+      - name: Run workbook tests
+        run: |
+          npm --prefix client run test -- --run ./src/lib/workbook/**.test.ts
+
+      - name: Upload vitest summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workbook-test-logs
+          path: client/test-results || client/vitest-report || client/vitest-results || ''
