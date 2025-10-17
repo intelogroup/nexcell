@@ -3,8 +3,10 @@
  * Tests JSON Schema validation functionality
  */
 
+import { describe, test, expect } from 'vitest';
 import { validateWorkbookObject } from "./validator";
 import sampleWorkbook from "./samples/simple.json";
+import { makeInvalidWorkbookMissingFields, makeInvalidWorkbookWrongType } from './test-fixtures';
 
 describe("Workbook Validator", () => {
   test("should validate correct workbook", async () => {
@@ -15,10 +17,7 @@ describe("Workbook Validator", () => {
   });
 
   test("should reject invalid workbook", async () => {
-    const invalidWorkbook = {
-      ...sampleWorkbook,
-      schemaVersion: 1.0, // Should be string, not number
-    };
+    const invalidWorkbook = makeInvalidWorkbookWrongType();
 
     const result = await validateWorkbookObject(invalidWorkbook);
 
@@ -28,10 +27,7 @@ describe("Workbook Validator", () => {
   });
 
   test("should reject workbook without required fields", async () => {
-    const invalidWorkbook = {
-      schemaVersion: "1.0",
-      // Missing workbookId, meta, sheets
-    };
+    const invalidWorkbook = makeInvalidWorkbookMissingFields();
 
     const result = await validateWorkbookObject(invalidWorkbook);
 

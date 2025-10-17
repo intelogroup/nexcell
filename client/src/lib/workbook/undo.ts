@@ -56,8 +56,10 @@ export function undo(
     };
   }
 
-  // Get last action
-  const lastAction = workbook.actionLog[workbook.actionLog.length - 1];
+  // Determine which action to undo based on head pointer. If no head pointer
+  // exists, default to the last action in the log.
+  const headIndex = (workbook as any)._actionHeadIndex !== undefined ? (workbook as any)._actionHeadIndex : (workbook.actionLog.length - 1);
+  const lastAction = workbook.actionLog[headIndex];
 
   // Check if action has inverse
   if (!lastAction.inverse) {
@@ -70,37 +72,52 @@ export function undo(
 
   // Apply inverse action
   try {
-    // Convert inverse action to operation
-    const inverseOp = actionToOperation(lastAction.inverse);
-
-    if (!inverseOp) {
-      return {
-        success: false,
-        action: null,
-        error: "Failed to convert inverse action to operation",
-      };
-    }
-
-    // Apply operation (skip adding to log, skip validation)
+    // Convert inverse action to operation and handle known action types directly
     const applyOptions: ApplyOptions = {
       skipValidation: true,
       hydration: options.hydration,
     };
 
-    // Temporarily remove last action before applying inverse
-    workbook.actionLog.pop();
+    // Move the selected action to redo stack before applying inverse so redo can restore it
+    (workbook as any)._redoStack = (workbook as any)._redoStack || [];
+    (workbook as any)._redoStack.push(lastAction);
+    // Initialize head pointer if missing
+    if ((workbook as any)._actionHeadIndex === undefined) {
+      (workbook as any)._actionHeadIndex = workbook.actionLog.length - 1;
+    }
+    // Set head to the index of the action we just undid
+    (workbook as any)._actionHeadIndex = headIndex - 1;
 
-    // Apply inverse without creating new action
-    const result = applyInverseDirectly(workbook, lastAction.inverse, applyOptions);
+    // If inverse is a simple sheet add/delete, handle directly to avoid touching operations.ts
+    if (lastAction.inverse && ((lastAction.inverse as any).type === 'deleteSheet' || (lastAction.inverse as any).type === 'addSheet')) {
+      const inv = lastAction.inverse as any;
+  if (inv.type === 'deleteSheet') {
+        // Remove sheet with id from payload.sheetId
+        const sheetIdToRemove = (inv.payload && inv.payload.sheetId) || inv.sheetId;
+        const idx = workbook.sheets.findIndex((s) => s.id === sheetIdToRemove);
+        if (idx !== -1) {
+          workbook.sheets.splice(idx, 1);
+        }
+  } else if (inv.type === 'addSheet') {
+        // Re-add sheet object from inverse payload (if present)
+        const sheetObj = (inv.payload && inv.payload.sheet) || null;
+        if (sheetObj) {
+          workbook.sheets.push(sheetObj as any);
+        }
+      }
+    } else {
+      // Apply inverse without creating new action
+      const result = applyInverseDirectly(workbook, lastAction.inverse, applyOptions);
 
-    if (!result.success) {
-      // Restore action if failed
-      workbook.actionLog.push(lastAction);
-      return {
-        success: false,
-        action: null,
-        error: result.error || "Failed to apply inverse action",
-      };
+      if (!result.success) {
+        // Restore redo stack pointer if failed
+          (workbook as any)._redoStack.pop();
+        return {
+          success: false,
+          action: null,
+          error: result.error || "Failed to apply inverse action",
+        };
+      }
     }
 
     // Update metadata
@@ -134,23 +151,54 @@ export function redo(
   workbook: WorkbookJSON,
   options: { hydration?: HydrationResult } = {}
 ): UndoRedoResult {
-  // For MVP, redo is not implemented yet
-  // Would require tracking redo stack separately or using cursor-based navigation
-  return {
-    success: false,
-    action: null,
-    error: "Redo not implemented yet (Phase 2)",
-  };
+  // Simple redo implementation using a redo stack placed on the workbook object
+  const redoStack: Action[] = (workbook as any)._redoStack || [];
+  if (!redoStack || redoStack.length === 0) {
+    return { success: false, action: null, error: 'Nothing to redo' };
+  }
+
+  const actionToRedo = redoStack.pop() as Action;
+
+  // Reapply the forward action
+  try {
+    // Handle sheet add/delete directly
+    if ((actionToRedo as any).type === 'addSheet') {
+      const sheetObj = (actionToRedo as any).payload && (actionToRedo as any).payload.sheet;
+      if (sheetObj) {
+        workbook.sheets.push(sheetObj as any);
+      }
+    } else if ((actionToRedo as any).type === 'deleteSheet') {
+      const sheetId = (actionToRedo as any).payload && (actionToRedo as any).payload.sheetId;
+      const idx = workbook.sheets.findIndex((s) => s.id === sheetId);
+      if (idx !== -1) workbook.sheets.splice(idx, 1);
+    } else {
+      // For other actions, convert to operation and apply via applyOperations
+      const op = actionToOperation(actionToRedo);
+      if (!op) return { success: false, action: null, error: 'Failed to convert action to operation' };
+      applyOperations(workbook, [op], { skipValidation: true, hydration: options.hydration });
+    }
+
+  // Push action back onto actionLog only if it's not already present
+  workbook.actionLog = workbook.actionLog || [];
+  const exists = workbook.actionLog.find((a) => a.id === actionToRedo.id);
+  if (!exists) workbook.actionLog.push(actionToRedo);
+
+    workbook.meta.modifiedAt = new Date().toISOString();
+
+    return { success: true, action: actionToRedo };
+  } catch (error) {
+    return { success: false, action: null, error: String(error) };
+  }
 }
 
 /**
  * Check if undo is available
  */
 export function canUndo(workbook: WorkbookJSON): boolean {
-  return (
+  return Boolean(
     workbook.actionLog &&
-    workbook.actionLog.length > 0 &&
-    workbook.actionLog[workbook.actionLog.length - 1].inverse !== undefined
+      workbook.actionLog.length > 0 &&
+      workbook.actionLog[workbook.actionLog.length - 1].inverse !== undefined
   );
 }
 
@@ -158,8 +206,7 @@ export function canUndo(workbook: WorkbookJSON): boolean {
  * Check if redo is available
  */
 export function canRedo(workbook: WorkbookJSON): boolean {
-  // For MVP, redo is not implemented
-  return false;
+  return Boolean((workbook as any)._redoStack && (workbook as any)._redoStack.length > 0);
 }
 
 /**

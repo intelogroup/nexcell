@@ -29,7 +29,7 @@ async function getAjv() {
   return ajv;
 }
 
-export async function validateWorkbook(workbook: any): Promise<ValidationResult> {
+export async function validateWorkbook(workbook: unknown): Promise<ValidationResult> {
   const ajvInstance = await getAjv();
 
   // Compile schema if not already compiled
@@ -134,6 +134,6 @@ export async function runValidatorCLI() {
 }
 
 // For browser usage - validate from object
-export async function validateWorkbookObject(workbook: WorkbookJSON): Promise<ValidationResult> {
+export async function validateWorkbookObject(workbook: unknown): Promise<ValidationResult> {
   return validateWorkbook(workbook);
 }

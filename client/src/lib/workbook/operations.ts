@@ -32,6 +32,7 @@ import {
   toAddress,
   getCellsInRange,
 } from "./utils";
+import { makeSheet } from "./workbook";
 
 // ============================================================================
 // Operation Types
@@ -43,7 +44,7 @@ import {
 export interface Operation {
   type: string;
   sheetId: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -146,17 +147,83 @@ export interface SetRangeOp extends Operation {
  * Union of all operation types
  */
 export type AnyOperation =
-  | EditCellOp
-  | DeleteCellOp
-  | InsertRowOp
-  | DeleteRowOp
-  | InsertColOp
-  | DeleteColOp
-  | MergeOp
-  | UnmergeOp
-  | SetStyleOp
-  | SetFormatOp
-  | SetRangeOp;
+  | { type: 'addSheet'; name?: string }
+  | { type: 'deleteSheet'; sheetId: string }
+  | (EditCellOp | DeleteCellOp | InsertRowOp | DeleteRowOp | InsertColOp | DeleteColOp | MergeOp | UnmergeOp | SetStyleOp | SetFormatOp | SetRangeOp);
+
+// Note: addSheet/deleteSheet are higher-level operations that may be
+// implemented by callers directly on the workbook model. We include
+// lightweight handlers here for completeness.
+
+// Apply addSheet/deleteSheet operations if present
+function applyAddSheet(
+  workbook: WorkbookJSON,
+  op: { type: 'addSheet'; name?: string },
+  options: ApplyOptions
+): ReturnType<typeof applyOperation> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Create sheet using provided name
+  const name = op.name || 'Sheet';
+  const sheet = makeSheet(name);
+  workbook.sheets.push(sheet);
+
+  const action: Action = {
+    id: generateId(),
+    type: 'addSheet',
+    timestamp: new Date().toISOString(),
+    user: options.user,
+    sheetId: sheet.id,
+    payload: { sheet },
+    inverse: {
+      id: generateId(),
+      type: 'deleteSheet',
+      timestamp: new Date().toISOString(),
+      user: options.user,
+      sheetId: sheet.id,
+      payload: { sheetId: sheet.id },
+    },
+  };
+
+  return { action, affectedRange: null, errors, warnings };
+}
+
+function applyDeleteSheet(
+  workbook: WorkbookJSON,
+  op: { type: 'deleteSheet'; sheetId: string },
+  options: ApplyOptions
+): ReturnType<typeof applyOperation> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const idx = workbook.sheets.findIndex((s) => s.id === op.sheetId);
+  if (idx === -1) {
+    errors.push(`Sheet not found: ${op.sheetId}`);
+    return { action: null, affectedRange: null, errors, warnings };
+  }
+
+  const [removed] = workbook.sheets.splice(idx, 1);
+
+  const action: Action = {
+    id: generateId(),
+    type: 'deleteSheet',
+    timestamp: new Date().toISOString(),
+    user: options.user,
+    sheetId: removed.id,
+    payload: { sheet: removed },
+    inverse: {
+      id: generateId(),
+      type: 'addSheet',
+      timestamp: new Date().toISOString(),
+      user: options.user,
+      sheetId: removed.id,
+      payload: { sheet: removed },
+    },
+  };
+
+  return { action, affectedRange: null, errors, warnings };
+}
 
 // ============================================================================
 // Result Types
@@ -334,6 +401,10 @@ function applyOperation(
 
   try {
     switch (op.type) {
+      case "addSheet":
+        return applyAddSheet(workbook, op, options);
+      case "deleteSheet":
+        return applyDeleteSheet(workbook, op, options);
       case "editCell":
         return applyEditCell(workbook, op, options);
       case "deleteCell":
@@ -357,7 +428,10 @@ function applyOperation(
       case "setRange":
         return applySetRange(workbook, op, options);
       default:
-        errors.push(`Unknown operation type: ${(op as any).type}`);
+        // Should be unreachable; avoid referencing `op` here because
+        // TypeScript narrows it to `never` which makes accessing
+        // properties a compile-time error. Use a generic message.
+        errors.push(`Unknown operation type`);
         return { action: null, affectedRange: null, errors, warnings };
     }
   } catch (error) {
@@ -1100,10 +1174,29 @@ function validateOperation(
 ): ValidationResult {
   const errors: string[] = [];
 
-  // Validate sheet exists
-  const sheet = getSheet(workbook, op.sheetId);
+  // Handle operations that don't require sheetId
+  if (op.type === 'addSheet') {
+    // No validation needed for addSheet
+    return { valid: true, errors: [] };
+  }
+
+  if (op.type === 'deleteSheet') {
+    const sheet = getSheet(workbook, op.sheetId);
+    if (!sheet) {
+      errors.push(`Sheet not found: ${op.sheetId}`);
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
+  // For operations that require sheetId, validate it exists
+  const sheetId = 'sheetId' in op ? (op as { sheetId: string }).sheetId : '';
+  if (!sheetId) {
+    errors.push('Sheet ID required for this operation');
+    return { valid: false, errors };
+  }
+  const sheet = getSheet(workbook, sheetId);
   if (!sheet) {
-    errors.push(`Sheet not found: ${op.sheetId}`);
+    errors.push(`Sheet not found: ${sheetId}`);
     return { valid: false, errors };
   }
 
@@ -1112,44 +1205,54 @@ function validateOperation(
     case "editCell":
     case "deleteCell":
     case "setStyle":
-    case "setFormat":
+    case "setFormat": {
       // Validate address
       try {
-        parseAddress((op as any).address);
-      } catch (error) {
-        errors.push(`Invalid address: ${(op as any).address}`);
+        const addressOp = op as { address: string };
+        parseAddress(addressOp.address);
+      } catch {
+        const addressOp = op as { address: string };
+        errors.push(`Invalid address: ${addressOp.address}`);
       }
       break;
+    }
 
     case "merge":
     case "unmerge":
-    case "setRange":
+    case "setRange": {
       // Validate range
       try {
-        const addresses = getCellsInRange((op as any).range);
+        const rangeOp = op as { range: string };
+        const addresses = getCellsInRange(rangeOp.range);
         if (addresses.length === 0) {
-          errors.push(`Invalid range: ${(op as any).range}`);
+          errors.push(`Invalid range: ${rangeOp.range}`);
         }
-      } catch (error) {
-        errors.push(`Invalid range: ${(op as any).range}`);
+      } catch {
+        const rangeOp = op as { range: string };
+        errors.push(`Invalid range: ${rangeOp.range}`);
       }
       break;
+    }
 
     case "insertRow":
-    case "deleteRow":
+    case "deleteRow": {
       // Validate row number
-      if ((op as any).row < 1) {
-        errors.push(`Invalid row number: ${(op as any).row}`);
+      const rowOp = op as { row: number };
+      if (rowOp.row < 1) {
+        errors.push(`Invalid row number: ${rowOp.row}`);
       }
       break;
+    }
 
     case "insertCol":
-    case "deleteCol":
+    case "deleteCol": {
       // Validate column number
-      if ((op as any).col < 1) {
-        errors.push(`Invalid column number: ${(op as any).col}`);
+      const colOp = op as { col: number };
+      if (colOp.col < 1) {
+        errors.push(`Invalid column number: ${colOp.col}`);
       }
       break;
+    }
   }
 
   return { valid: errors.length === 0, errors };

@@ -20,8 +20,10 @@ import HyperFormulaNamespace, { type ConfigParams } from "hyperformula";
 import type {
   WorkbookJSON,
   ComputedValue,
+  SheetJSON,
 } from "./types";
 import { hfToAddress, addressToHf } from "./utils";
+import { trackHFVersionMismatch } from "../telemetry";
 
 // Extract HyperFormula class from the namespace
 const { HyperFormula } = HyperFormulaNamespace;
@@ -39,19 +41,33 @@ type HyperFormulaInstance = ReturnType<typeof HyperFormula.buildEmpty>;
  */
 export const DEFAULT_HF_CONFIG: Partial<ConfigParams> = {
   licenseKey: "gpl-v3", // Use GPL v3 license
-  useArrayArithmetic: true, // Support array formulas
+  useArrayArithmetic: true, // Support array formulas (Excel-like)
   useColumnIndex: false, // Use A1 notation
   useStats: false, // Disable stats collection for performance
   smartRounding: true, // Round floating point precision
   precisionRounding: 14, // Excel-like precision
+  precisionEpsilon: 1e-13,
   dateFormats: ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"],
   timeFormats: ["HH:mm", "HH:mm:ss"],
-  functionArgSeparator: ",", // Use comma separator
+  functionArgSeparator: ",", // Use comma separator (closest to en-US Excel)
   decimalSeparator: ".", // Use period for decimals
   thousandSeparator: "", // Empty string to avoid conflict with functionArgSeparator
+  // Array separators
+  arrayColumnSeparator: ",",
+  arrayRowSeparator: ";",
+  // Localization / comparison
+  caseSensitive: false,
+  accentSensitive: true,
+  ignorePunctuation: false,
+  localeLang: "en-US",
+  // Criteria / matching
+  useWildcards: true,
+  useRegularExpressions: false,
+  matchWholeCell: true,
+  // Formula parsing behavior
+  ignoreWhiteSpace: "any",
+  evaluateNullToZero: true,
   // nullYear is a two-digit pivot (0-100). Use 30 for Excel-like behavior
-  // (treats years 00-30 as 2000-2030). A four-digit year like 1900 is invalid
-  // for HyperFormula and will throw ConfigValueTooBigError (>100).
   nullYear: 30,
   leapYear1900: true, // Excel leap year bug compatibility
 };
@@ -68,6 +84,124 @@ export interface HydrationResult {
   sheetMap: Map<string, number>; // sheetId -> HF sheet index (0-based)
   addressMap: Map<string, string>; // "Sheet1!A1" -> cell address for lookups
   warnings: string[];
+  workbookId?: string;
+  lastModified?: string;
+}
+
+// Simple in-memory hydration cache keyed by workbookId
+const hydrationCache = new Map<string, HydrationResult>();
+
+/**
+ * Return cached hydration for workbook if up-to-date, otherwise create a new one.
+ */
+export function getOrCreateHydration(
+  workbook: WorkbookJSON,
+  options: HydrationOptions = {}
+): HydrationResult {
+  const id = workbook.workbookId || '__local__';
+  const cached = hydrationCache.get(id);
+  const modifiedAt = workbook.meta?.modifiedAt;
+
+  if (cached && cached.lastModified && modifiedAt && cached.lastModified === modifiedAt) {
+    return cached;
+  }
+
+  const hydration = hydrateHFFromWorkbook(workbook, options);
+  hydration.workbookId = id;
+  hydration.lastModified = modifiedAt;
+  hydrationCache.set(id, hydration);
+  return hydration;
+}
+
+/**
+ * Patch helper to add a single sheet to an existing HF instance and load its cells.
+ * Does NOT rebuild the entire HF instance. Updates the provided sheetMap and addressMap.
+ * Returns warnings encountered while patching.
+ */
+export function hydrateHFFromWorkbookPatch(
+  hydration: HydrationResult,
+  sheet: SheetJSON
+): string[] {
+  const warnings: string[] = [];
+  const { hf, sheetMap, addressMap } = hydration;
+
+  // Defensive: ensure sheet isn't already mapped
+  if (sheetMap.has(sheet.id)) {
+    warnings.push(`Sheet with id ${sheet.id} already exists in HF mapping`);
+    return warnings;
+  }
+
+  // Determine a safe sheet name (HF requires unique names)
+  let baseName = sheet.name || `Sheet${sheetMap.size + 1}`;
+  let newName = baseName;
+  let suffix = 1;
+  while (hf.getSheetId(newName) !== undefined) {
+    newName = `${baseName}_${suffix++}`;
+  }
+
+  try {
+    const added = hf.addSheet(newName);
+    const hfSheetId = hf.getSheetId(added);
+    if (hfSheetId === undefined) {
+      throw new Error('HF returned undefined sheet id after addSheet');
+    }
+    // register mapping
+    sheetMap.set(sheet.id, hfSheetId);
+
+    // Load cells for the new sheet
+    const cells = sheet.cells || {};
+    for (const [address, cell] of Object.entries(cells)) {
+      try {
+        const { row, col } = addressToHf(address);
+
+        let hfValue: any;
+        if (cell.formula) {
+          hfValue = cell.formula.startsWith('=') ? cell.formula : `=${cell.formula}`;
+        } else if (cell.raw !== undefined && cell.raw !== null) {
+          hfValue = cell.raw;
+        } else if (cell.computed?.v !== undefined) {
+          // Only use cached computed values if the HF version matches the one that produced the cache
+          const cacheHFVersion = cell.computed.hfVersion;
+          const currentHFVersion = HyperFormula.version;
+          if (cacheHFVersion && cacheHFVersion !== currentHFVersion) {
+            // Mark cached value as stale so callers (AI planner) can reason about trust
+            if (!cell.computed) {
+              cell.computed = { v: null, ts: new Date().toISOString(), hfVersion: cacheHFVersion } as any;
+            }
+            cell.computed = { ...cell.computed, stale: true } as any;
+            warnings.push(
+              `Skipping cached computed value for ${sheet.name}!${address} due to hfVersion mismatch (cache: ${cacheHFVersion}, current: ${currentHFVersion})`
+            );
+          } else {
+            hfValue = cell.computed.v;
+          }
+        } else {
+          continue;
+        }
+
+        hf.setCellContents({ sheet: hfSheetId, row, col }, hfValue);
+
+        // update hfInternal on the workbook model for quicker rehydration later
+        if (!cell.hfInternal) {
+          cell.hfInternal = { sheetId: hfSheetId, row, col } as any;
+        } else {
+          cell.hfInternal.sheetId = hfSheetId;
+          cell.hfInternal.row = row;
+          cell.hfInternal.col = col;
+        }
+
+        // address map
+        const fullAddress = `${sheet.name}!${address}`;
+        addressMap.set(fullAddress, address);
+      } catch (err) {
+        warnings.push(`Failed to load cell ${address} for sheet ${sheet.name}: ${err}`);
+      }
+    }
+  } catch (err) {
+    warnings.push(`Failed to add sheet to HF: ${err}`);
+  }
+
+  return warnings;
 }
 
 /**
@@ -117,6 +251,9 @@ export function hydrateHFFromWorkbook(
   const warnings: string[] = [];
   const config = { ...DEFAULT_HF_CONFIG, ...options.config };
 
+  // Track number of skipped cached values due to hfVersion mismatch
+  let hfStaleCount = 0;
+
   // Defensive validation
   if (!workbook.sheets || workbook.sheets.length === 0) {
     throw new Error("hydrateHFFromWorkbook: workbook has no sheets");
@@ -124,6 +261,10 @@ export function hydrateHFFromWorkbook(
 
   // Initialize HF with empty instance (NO default sheets created)
   const hf = HyperFormula.buildEmpty(config);
+
+  // For Excel compatibility, define TRUE and FALSE as named expressions and
+  // (Named expressions will be registered after sheets are created so that
+  // sheet-scoped references resolve correctly.)
 
   // Create sheet mapping (sheetId -> HF sheet index)
   const sheetMap = new Map<string, number>();
@@ -217,8 +358,26 @@ export function hydrateHFFromWorkbook(
           // Load raw value
           hfValue = cell.raw;
         } else if (!options.skipCache && cell.computed?.v !== undefined) {
-          // Load cached computed value if available
-          hfValue = cell.computed.v;
+          // Load cached computed value only if produced by the same HF version
+          const cacheHFVersion = cell.computed.hfVersion;
+          const currentHFVersion = HyperFormula.version;
+          if (cacheHFVersion && cacheHFVersion !== currentHFVersion) {
+            // Mark cached computed value as stale so AI can avoid trusting it
+            if (!cell.computed) {
+              cell.computed = { v: null, ts: new Date().toISOString(), hfVersion: cacheHFVersion } as any;
+            }
+            cell.computed = { ...cell.computed, stale: true } as any;
+            warnings.push(
+              `Skipping cached computed value for ${sheet.name}!${address} due to hfVersion mismatch (cache: ${cacheHFVersion}, current: ${currentHFVersion})`
+            );
+            // Count stale cached entries for telemetry
+            hfStaleCount++;
+            // Do not set hfValue here; HF will see the cell as empty and compute from formula/raw as needed
+            continue;
+          } else {
+            // Load cached computed value
+            hfValue = cell.computed.v;
+          }
         } else {
           // Empty cell
           continue;
@@ -288,12 +447,84 @@ export function hydrateHFFromWorkbook(
     }
   }
 
+  // Emit aggregated telemetry if we skipped any stale cached computed values
+  try {
+    maybeEmitHFVersionTelemetry(workbook, hfStaleCount);
+  } catch (err) {
+    // swallow telemetry errors
+  }
+
+  // Register named expressions AFTER all sheets are created so sheet names
+  // resolve to valid HF sheet IDs when the named expression is parsed.
+  try {
+    if (typeof hf.addNamedExpression === 'function') {
+      hf.addNamedExpression('TRUE', '=TRUE()');
+      hf.addNamedExpression('FALSE', '=FALSE()');
+
+      if (workbook.namedRanges) {
+        for (const [name, nr] of Object.entries(workbook.namedRanges)) {
+          try {
+            const ref = typeof nr === 'string' ? nr : (nr as any).ref;
+            if (!ref) {
+              warnings.push(`NamedRange ${name} has no ref; skipping`);
+              continue;
+            }
+            const expr = ref.startsWith('=') ? ref : `=${ref}`;
+            hf.addNamedExpression(name, expr);
+          } catch (err) {
+            warnings.push(`Failed to add named range ${name}: ${err}`);
+          }
+        }
+      }
+
+      for (const sheet of workbook.sheets || []) {
+        if (sheet.namedRanges) {
+          for (const [name, nr] of Object.entries(sheet.namedRanges)) {
+            try {
+              const ref = typeof nr === 'string' ? nr : (nr as any).ref;
+              if (!ref) {
+                warnings.push(`Sheet-scoped NamedRange ${name} on ${sheet.name} has no ref; skipping`);
+                continue;
+              }
+              const expr = ref.startsWith('=') ? ref : `=${ref}`;
+              hf.addNamedExpression(name, expr);
+            } catch (err) {
+              warnings.push(`Failed to add sheet-scoped named range ${name} on ${sheet.name}: ${err}`);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    warnings.push(`Failed to register named expressions: ${err}`);
+  }
+
   return {
     hf,
     sheetMap,
     addressMap,
     warnings,
   };
+}
+
+// Emit telemetry if we detected any hf-version stale cache entries during hydration
+// Note: we intentionally keep telemetry emission outside the main loop to avoid
+// spamming events for each cell; emit a single aggregated event per hydration.
+// We rely on safe metadata only (counts and versions) — no workbook contents.
+function maybeEmitHFVersionTelemetry(workbook: WorkbookJSON, staleCount: number) {
+  try {
+    if (staleCount > 0) {
+      const cacheVersion = undefined; // not tracking a single cache version here
+      const currentVersion = HyperFormula.version;
+      const sheetCount = workbook.sheets ? workbook.sheets.length : undefined;
+      // workbook.id may not exist for all formats; guard accordingly
+  const workbookId = workbook.workbookId || 'unknown';
+      trackHFVersionMismatch(workbookId, staleCount, cacheVersion, currentVersion, sheetCount);
+    }
+  } catch (err) {
+    // Telemetry should not throw; log and continue
+    console.warn('Failed to emit HF version telemetry:', err);
+  }
 }
 
 /**
@@ -367,41 +598,68 @@ export function recomputeAndPatchCache(
           computedBy,
         };
 
-        // Handle different value types
+  // Handle different value shapes from HyperFormula. HF can return:
+        // - primitive values (number, string, boolean)
+        // - Date objects in some configurations
+        // - error objects like { type: 'ERROR', value: '#DIV/0!' }
+        // - or sometimes plain error strings like '#DIV/0!'
+
+        // Null/undefined -> treat as empty
         if (cellValue === null || cellValue === undefined) {
           computed.v = null;
-          computed.t = "s"; // Empty string type
-        } else if (typeof cellValue === "number") {
-          computed.v = cellValue;
-          computed.t = "n";
-        } else if (typeof cellValue === "string") {
-          computed.v = cellValue;
-          computed.t = "s";
-        } else if (typeof cellValue === "boolean") {
-          computed.v = cellValue;
-          computed.t = "b";
-        } else if (
-          typeof cellValue === "object" &&
-          "type" in cellValue &&
-          cellValue.type === "ERROR"
-        ) {
-          // Handle HF error
-          computed.v = null;
-          computed.t = "e";
-          computed.error = `${cellValue.value}`;
-          errors.push({
-            address,
-            sheetId: sheet.id,
-            error: computed.error,
-          });
+          computed.t = "s"; // empty
+
+        // Detect errors in several shapes:
+        // - { type: 'ERROR', value: '#DIV/0!' }
+        // - { value: '#DIV/0!' } or { error: '#DIV/0!' }
+        // - '#DIV/0!'
         } else {
-          // Unknown type
-          computed.v = String(cellValue);
-          computed.t = "s";
+          // Try to detect an error string inside the cellValue
+          let detectedError: string | undefined;
+
+          if (typeof cellValue === 'object' && cellValue !== null) {
+            const anyVal: any = cellValue;
+            if ('type' in anyVal && anyVal.type === 'ERROR') {
+              detectedError = anyVal.value || anyVal.error || JSON.stringify(anyVal.value || anyVal.error || anyVal);
+            } else if (typeof anyVal.value === 'string' && anyVal.value.startsWith('#')) {
+              detectedError = anyVal.value;
+            } else if (typeof anyVal.error === 'string' && anyVal.error.startsWith('#')) {
+              detectedError = anyVal.error;
+            }
+          } else if (typeof cellValue === 'string' && cellValue.startsWith('#')) {
+            detectedError = cellValue;
+          }
+
+          if (detectedError) {
+            computed.v = detectedError;
+            computed.t = 'e';
+            computed.error = formatHFError(detectedError);
+            errors.push({ address, sheetId: sheet.id, error: String(computed.error) });
+          } else if (typeof cellValue === "number") {
+            computed.v = cellValue;
+            computed.t = "n";
+          } else if (typeof cellValue === "boolean") {
+            computed.v = cellValue;
+            computed.t = "b";
+          } else if (cellValue instanceof Date) {
+            // Serialize dates as ISO strings for safe JSON storage and comparison.
+            computed.v = cellValue.toISOString();
+            computed.t = "d";
+          } else {
+            // Fallback - convert to string
+            computed.v = String(cellValue);
+            computed.t = "s";
+          }
+
         }
 
         // Update cell computed cache
-        cell.computed = computed;
+        // Merge with existing computed metadata and clear stale flag since we've recomputed
+        if (!cell.computed) {
+          cell.computed = computed;
+        } else {
+          cell.computed = { ...cell.computed, ...computed, stale: false } as any;
+        }
 
         // Update workbook-level cache
         const fullAddress = `${sheet.name}!${address}`;
@@ -409,23 +667,8 @@ export function recomputeAndPatchCache(
 
         updatedCells++;
 
-        // Get cell dependencies (cells this formula depends on)
-        try {
-          const dependents = hf.getCellDependents({ sheet: hfSheetId, row, col });
-          if (dependents && dependents.length > 0) {
-            const deps = dependents.map((dep: any) => {
-              const depSheetName = hf.getSheetName(dep.sheet);
-              const depAddress = hfToAddress(dep.row, dep.col);
-              return `${depSheetName}!${depAddress}`;
-            });
-            workbook.computed.dependencyGraph![fullAddress] = deps;
-          }
-        } catch (depError) {
-          // Dependencies not critical, just log warning
-          warnings.push(
-            `Failed to get dependencies for ${fullAddress}: ${depError}`
-          );
-        }
+        // We'll compute dependencyGraph in a single pass after all cells are processed
+        // to avoid per-cell parsing overhead. This is done below.
       } catch (error) {
         errors.push({
           address,
@@ -437,6 +680,44 @@ export function recomputeAndPatchCache(
         );
       }
     }
+  }
+
+  // Build dependency graph by inverting HF dependents to get precedents for each formula cell.
+  try {
+    const depGraph: Record<string, string[]> = {};
+    for (const sheet of workbook.sheets) {
+      const hfSheetId = sheetMap.get(sheet.id);
+      if (hfSheetId === undefined) continue;
+
+      for (const address of Object.keys(sheet.cells || {})) {
+        // For each cell, get who depends on it and invert mapping
+        try {
+          const { row, col } = addressToHf(address);
+          const dependents = typeof (hf as any).getCellDependents === 'function'
+            ? (hf as any).getCellDependents({ sheet: hfSheetId, row, col })
+            : [];
+
+          if (dependents && dependents.length > 0) {
+            const srcAddress = `${sheet.name}!${address}`;
+            for (const dep of dependents) {
+              const depSheetName = hf.getSheetName(dep.sheet);
+              const depAddr = hfToAddress(dep.row, dep.col);
+              const depFull = `${depSheetName}!${depAddr}`;
+              // depFull depends on srcAddress, so add srcAddress to its precedents list
+              if (!depGraph[depFull]) depGraph[depFull] = [];
+              depGraph[depFull].push(srcAddress);
+            }
+          }
+        } catch (e) {
+          // best-effort; continue
+        }
+      }
+    }
+
+    // Assign to workbook computed dependency graph (overwrite with fresh mapping)
+    workbook.computed.dependencyGraph = depGraph;
+  } catch (e) {
+    warnings.push(`Failed to build dependency graph: ${e}`);
   }
 
   // Update workbook metadata
@@ -461,13 +742,13 @@ export function recomputeAndPatchCache(
  */
 export function computeWorkbook(
   workbook: WorkbookJSON,
-  options: HydrationOptions & RecomputeOptions = {}
+  options: HydrationOptions & RecomputeOptions & { forceNewHydration?: boolean } = {}
 ): {
   hydration: HydrationResult;
   recompute: RecomputeResult;
 } {
-  // Hydrate HF from workbook
-  const hydration = hydrateHFFromWorkbook(workbook, options);
+  // Hydrate HF from workbook (reuse cached hydration when possible)
+  const hydration = options.forceNewHydration ? hydrateHFFromWorkbook(workbook, options) : getOrCreateHydration(workbook, options);
 
   // Recompute and patch cache
   const recompute = recomputeAndPatchCache(workbook, hydration, options);
@@ -645,6 +926,12 @@ export function getHFStats(hf: HyperFormulaInstance): {
  */
 export function disposeHF(hf: HyperFormulaInstance): void {
   try {
+    // Remove any cached hydration that references this HF instance
+    for (const [id, hydration] of hydrationCache.entries()) {
+      if (hydration.hf === hf) {
+        hydrationCache.delete(id);
+      }
+    }
     hf.destroy();
   } catch (error) {
     console.warn("Failed to dispose HF instance:", error);
@@ -654,3 +941,5 @@ export function disposeHF(hf: HyperFormulaInstance): void {
 // Re-export HyperFormula class and type for external usage
 export { HyperFormula };
 export type { HyperFormulaInstance };
+
+// Note: maybeEmitHFVersionTelemetry is internal and not exported.

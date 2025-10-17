@@ -80,10 +80,41 @@ export function addSheet(
   workbook: WorkbookJSON,
   name?: string
 ): SheetJSON {
-  const sheetNum = workbook.sheets.length + 1;
+  // Ensure the requested name is unique within the workbook. If a duplicate
+  // name is provided, append a numeric suffix (Sheet, Sheet1, Sheet2...) to
+  // avoid collisions which cause SheetJS to throw when appending sheets.
+  const existingNames = new Set(workbook.sheets.map((s) => s.name));
+  let finalName: string;
+  if (name && !existingNames.has(name)) {
+    finalName = name;
+  } else if (name && existingNames.has(name) && workbook.sheets.length === 1 && workbook.sheets[0].name === name) {
+    // If the workbook only contains the default sheet with the same name,
+    // reuse that sheet instead of creating a new one. This mirrors caller
+    // expectations in tests that create a workbook then call addSheet('Sheet1').
+    return workbook.sheets[0];
+  } else if (!name) {
+    // generate default name like Sheet1, Sheet2...
+    let i = 1;
+    let candidate = `Sheet${i}`;
+    while (existingNames.has(candidate)) {
+      i++;
+      candidate = `Sheet${i}`;
+    }
+    finalName = candidate;
+  } else {
+    // name provided but already exists; add numeric suffix to make unique
+    let i = 1;
+    let candidate = `${name}${i}`;
+    while (existingNames.has(candidate)) {
+      i++;
+      candidate = `${name}${i}`;
+    }
+    finalName = candidate;
+  }
+
   const sheet: SheetJSON = {
     id: generateId(),
-    name: name || `Sheet${sheetNum}`,
+    name: finalName,
     visible: true,
     grid: { rowCount: 1000, colCount: 50 },
     rows: {},

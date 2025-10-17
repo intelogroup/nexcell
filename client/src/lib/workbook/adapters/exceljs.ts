@@ -4,8 +4,35 @@
  * Supports: formulas, styles, comments, data validations, conditional formats, images, tables
  */
 
-import type { ExportAdapter, WorkbookJSON, SheetJSON, Cell } from "../types";
+import type { ExportAdapter, WorkbookJSON, SheetJSON, Cell, SheetJSType, CellDataType, CellStyle } from "../types";
 import { parseAddress } from "../utils";
+
+type ExcelJSWorksheetLike = Record<string, unknown> & {
+  name?: string;
+  state?: string;
+  rowCount?: number;
+  columnCount?: number;
+  views?: Array<{ activeTab?: number; zoomScale?: number; state?: string; xSplit?: number; ySplit?: number }>;
+  properties?: { tabColor?: { argb?: string } };
+  showGridLines?: boolean;
+  showRowColHeaders?: boolean;
+  eachRow?: (opts: { includeEmpty: boolean }, cb: (row: Record<string, unknown>, rowNumber: number) => void) => void;
+  columns?: Array<Record<string, unknown>>;
+  model?: { merges?: string[] };
+};
+
+type ExcelJSCellLike = Record<string, unknown> & {
+  value?: unknown;
+  formula?: unknown;
+  result?: unknown;
+  type?: unknown;
+  numFmt?: string;
+  font?: Record<string, unknown>;
+  fill?: Record<string, unknown>;
+  alignment?: Record<string, unknown>;
+  border?: Record<string, unknown>;
+  style?: unknown;
+};
 
 export class ExcelJSAdapter implements ExportAdapter {
   readonly name = "ExcelJS";
@@ -63,7 +90,7 @@ export class ExcelJSAdapter implements ExportAdapter {
       // Set sheet properties (tabColor requires properties object)
       if (sheet.properties?.tabColor) {
         ws.properties = ws.properties || {};
-        (ws.properties as any).tabColor = { argb: sheet.properties.tabColor };
+  ((ws.properties as unknown) as Record<string, unknown>).tabColor = { argb: sheet.properties.tabColor };
       }
 
       // Add cells
@@ -81,10 +108,12 @@ export class ExcelJSAdapter implements ExportAdapter {
 
         // Set value and formula
         if (cell.formula) {
+          // ExcelJS expects the formula without a leading '=' when assigning.
+          const f = cell.formula.startsWith('=') ? cell.formula.substring(1) : cell.formula;
           // ExcelJS requires setting value as object with formula and result
           const result = cell.computed?.v;
           excelCell.value = {
-            formula: cell.formula,
+            formula: f,
             result: result === null ? undefined : result,
           };
         } else {
@@ -102,12 +131,14 @@ export class ExcelJSAdapter implements ExportAdapter {
         }
 
         // Add comment if present in sheet comments
-        const commentForCell = Object.values(sheet.comments || {}).find((commentList: any) => {
-          return commentList.some && commentList.some((c: any) => c.address === address);
+        const commentForCell = Object.values(sheet.comments || {}).find((commentList: unknown) => {
+          if (!Array.isArray(commentList)) return false;
+          return commentList.some((c) => typeof c === 'object' && c !== null && 'address' in (c as object) && (c as { address?: string }).address === address);
         });
+
         if (commentForCell && Array.isArray(commentForCell) && commentForCell.length > 0) {
-          const firstComment = commentForCell[0] as any;
-          excelCell.note = firstComment.text || "Comment";
+          const firstComment = commentForCell[0] as { text?: string } | undefined;
+          excelCell.note = firstComment?.text ?? "Comment";
         }
       }
 
@@ -156,11 +187,45 @@ export class ExcelJSAdapter implements ExportAdapter {
     }
 
     // Add named ranges - TODO: ExcelJS named ranges implementation
-    // if (workbook.namedRanges) {
-    //   for (const [name, range] of Object.entries(workbook.namedRanges)) {
-    //     wb.definedNames.add(name, range);
-    //   }
-    // }
+    // Add named ranges - try to use ExcelJS definedNames where supported
+    try {
+      if (workbook.namedRanges) {
+        for (const [name, nr] of Object.entries(workbook.namedRanges)) {
+          const ref = typeof nr === 'string' ? nr : (nr as any).ref;
+          if (!ref) continue;
+          // ExcelJS exposes `definedNames` on workbook
+          if ((wb as any).definedNames && typeof (wb as any).definedNames.add === 'function') {
+            // ExcelJS doesn't have a standard API for marking hidden named ranges in the high-level API,
+            // but definedNames.add accepts workbook-level entries.
+            (wb as any).definedNames.add(name, ref);
+            // If the NamedRange was an object and had hidden flag, we will record a warning as ExcelJS
+            // high-level API doesn't expose a hidden flag. Advanced manipulation would require writing
+            // raw XML parts which is out of scope.
+            if (typeof nr !== 'string' && (nr as any).hidden) {
+              warnings.push(`Named range "${name}" marked hidden in schema but ExcelJS can't mark it hidden via high-level API. It will be exported but may be visible in Excel.`);
+            }
+          } else {
+            warnings.push(`Named range "${name}" could not be exported: ExcelJS definedNames API unavailable.`);
+          }
+        }
+      }
+      // Also export sheet-scoped named ranges
+      for (const sheet of workbook.sheets) {
+        if (!sheet.namedRanges) continue;
+        for (const [name, nr] of Object.entries(sheet.namedRanges)) {
+          const ref = typeof nr === 'string' ? `${sheet.name}!${nr}` : (nr as any).ref;
+          if (!ref) continue;
+          if ((wb as any).definedNames && typeof (wb as any).definedNames.add === 'function') {
+            (wb as any).definedNames.add(name, ref);
+            if (typeof nr !== 'string' && (nr as any).hidden) {
+              warnings.push(`Named range "${name}" (sheet ${sheet.name}) marked hidden in schema but ExcelJS can't mark it hidden via high-level API.`);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      warnings.push(`Failed to export named ranges via ExcelJS: ${e}`);
+    }
 
     // Store warnings in workbook for persistence
     if (warnings.length > 0) {
@@ -170,17 +235,22 @@ export class ExcelJSAdapter implements ExportAdapter {
     }
 
     // Write to buffer
-    const buffer = await wb.xlsx.writeBuffer() as any;
-    
-    // Convert Node.js Buffer to ArrayBuffer for browser compatibility
-    // ExcelJS returns Buffer (Uint8Array), we need ArrayBuffer
-    if (buffer instanceof ArrayBuffer) {
-      return buffer;
+    const buffer = await wb.xlsx.writeBuffer() as unknown;
+
+    if (buffer instanceof ArrayBuffer) return buffer;
+    if (ArrayBuffer.isView(buffer)) {
+      const view = buffer as ArrayBufferView;
+      // Create a copy to ensure result is an ArrayBuffer (not SharedArrayBuffer)
+      const uint8 = new Uint8Array(view.buffer as ArrayBuffer, view.byteOffset, view.byteLength);
+      return uint8.slice().buffer as ArrayBuffer;
     }
-    
-    // Handle Buffer/Uint8Array case - convert to ArrayBuffer
-    const uint8Array = new Uint8Array(buffer);
-    return uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength);
+
+    try {
+      const uint8Array = new Uint8Array(buffer as Iterable<number>);
+      return uint8Array.slice().buffer as ArrayBuffer;
+    } catch {
+      throw new Error('Unsupported buffer type returned by ExcelJS');
+    }
     
   }
 
@@ -217,7 +287,7 @@ export class ExcelJSAdapter implements ExportAdapter {
     };
     
     // Import each worksheet
-    wb.eachSheet((worksheet) => {
+    wb.eachSheet((worksheet: unknown) => {
       const sheet = this.worksheetToSheet(worksheet);
       workbook.sheets.push(sheet);
     });
@@ -225,14 +295,15 @@ export class ExcelJSAdapter implements ExportAdapter {
     return workbook;
   }
   
-  private worksheetToSheet(worksheet: any): SheetJSON {
+  private worksheetToSheet(worksheet: ExcelJSWorksheetLike | unknown): SheetJSON {
+    const ws = worksheet as ExcelJSWorksheetLike;
     const sheet: SheetJSON = {
       id: crypto.randomUUID(),
-      name: worksheet.name,
-      visible: worksheet.state === 'visible',
+      name: ws.name ?? 'Sheet',
+      visible: ws.state === 'visible',
       grid: { 
-        rowCount: Math.max(worksheet.rowCount || 1000, 1000), 
-        colCount: Math.max(worksheet.columnCount || 50, 50) 
+        rowCount: Math.max(ws.rowCount || 1000, 1000), 
+        colCount: Math.max(ws.columnCount || 50, 50) 
       },
       rows: {},
       cols: {},
@@ -248,161 +319,211 @@ export class ExcelJSAdapter implements ExportAdapter {
       properties: {
         defaultRowHeight: 21,
         defaultColWidth: 100,
-        gridLines: worksheet.showGridLines !== false,
-        showHeaders: worksheet.showRowColHeaders !== false,
-        zoom: worksheet.views?.[0]?.zoomScale || 100,
-        tabColor: worksheet.properties?.tabColor?.argb,
-        freeze: worksheet.views?.[0]?.state === 'frozen' ? {
-          row: worksheet.views[0].ySplit || 0,
-          col: worksheet.views[0].xSplit || 0,
+        gridLines: ws.showGridLines !== false,
+        showHeaders: ws.showRowColHeaders !== false,
+        zoom: ws.views?.[0]?.zoomScale || 100,
+        tabColor: ws.properties?.tabColor?.argb,
+        freeze: ws.views?.[0]?.state === 'frozen' ? {
+          row: ws.views?.[0]?.ySplit || 0,
+          col: ws.views?.[0]?.xSplit || 0,
         } : undefined,
       },
     };
     
     // Import cells
-    worksheet.eachRow({ includeEmpty: false }, (row: any, rowNumber: number) => {
-      row.eachCell({ includeEmpty: false }, (excelCell: any, colNumber: number) => {
-        const address = this.toAddress(rowNumber, colNumber);
-        const cell = this.excelCellToCell(excelCell);
-        if (cell) {
-          sheet.cells![address] = cell;
-        }
+    if (typeof ws.eachRow === 'function') {
+      ws.eachRow({ includeEmpty: false }, (row: Record<string, unknown>, rowNumber: number) => {
+        if (typeof row.eachCell !== 'function') return;
+        row.eachCell({ includeEmpty: false }, (excelCell: ExcelJSCellLike, colNumber: number) => {
+          const address = this.toAddress(rowNumber, colNumber);
+          const cell = this.excelCellToCell(excelCell);
+          if (cell) sheet.cells![address] = cell;
+        });
       });
-    });
+    }
     
     // Import column properties
-    worksheet.columns?.forEach((col: any, index: number) => {
-      if (col.width || col.hidden) {
+    ws.columns?.forEach((col, index) => {
+      if (col && (col.width || col.hidden)) {
         sheet.cols![index + 1] = {
-          width: col.width ? col.width * 7 : undefined, // Convert back
-          hidden: col.hidden || false,
+          width: col.width ? (col.width as number) * 7 : undefined, // Convert back
+          hidden: (col.hidden as boolean) || false,
         };
       }
     });
     
     // Import row properties
-    worksheet.eachRow({ includeEmpty: true }, (row: any, rowNumber: number) => {
-      if (row.height || row.hidden) {
-        sheet.rows![rowNumber] = {
-          height: row.height || undefined,
-          hidden: row.hidden || false,
-        };
-      }
-    });
+    if (typeof ws.eachRow === 'function') {
+      ws.eachRow({ includeEmpty: true }, (row: Record<string, unknown>, rowNumber: number) => {
+        if (row && ((row as any).height || (row as any).hidden)) {
+          sheet.rows![rowNumber] = {
+            height: (row as any).height || undefined,
+            hidden: (row as any).hidden || false,
+          };
+        }
+      });
+    }
     
     // Import merged ranges
-    if (worksheet.model?.merges) {
-      sheet.mergedRanges = worksheet.model.merges.map((range: string) => range);
+    if (ws.model?.merges) {
+      sheet.mergedRanges = ws.model.merges.map((range) => range);
     }
     
     return sheet;
   }
   
-  private excelCellToCell(excelCell: any): Cell | null {
-    if (excelCell.value === null || excelCell.value === undefined) {
-      return null;
-    }
-    
+  private excelCellToCell(excelCell: ExcelJSCellLike | unknown): Cell | null {
+    const cellLike = excelCell as ExcelJSCellLike;
+    if (cellLike.value === null || cellLike.value === undefined) return null;
+
     const cell: Cell = {};
     
     // Handle formulas
-    if (excelCell.formula) {
-      cell.formula = excelCell.formula;
+    // ExcelJS may store formulas in excelCell.formula, or for formula cells excelCell.value may
+    // be an object like { formula, result }. Accept both and normalize to our internal
+    // representation which always includes a leading '='.
+    const formulaFromValue = cellLike && typeof cellLike.value === 'object' && cellLike.value && 'formula' in (cellLike.value as object)
+      ? (cellLike.value as { formula?: unknown }).formula
+      : undefined;
+
+    const rawFormula = cellLike && (cellLike.formula || formulaFromValue);
+    if (rawFormula) {
+      const f = typeof rawFormula === 'string' ? rawFormula : String(rawFormula);
+      cell.formula = f.startsWith('=') ? f : `=${f}`;
       cell.dataType = "formula";
-      
-      // Store computed value if available
-      if (excelCell.value !== undefined) {
-        const value = typeof excelCell.value === 'object' && 'result' in excelCell.value 
-          ? excelCell.value.result 
-          : excelCell.value;
-        
+
+      // Store computed value if available. ExcelJS may expose result in excelCell.value.result
+      // or in excelCell.result depending on version.
+      let value: unknown = undefined;
+      if (cellLike.value && typeof cellLike.value === 'object' && 'result' in (cellLike.value as object)) {
+        value = (cellLike.value as { result?: unknown }).result;
+      } else if ('result' in cellLike) {
+        value = (cellLike as { result?: unknown }).result;
+      } else if (cellLike.value && typeof cellLike.value !== 'object') {
+        // Sometimes value holds the computed scalar
+        value = cellLike.value;
+      }
+
+      if (value !== undefined) {
         cell.computed = {
-          v: value,
-          t: this.getTypeCode(excelCell.type) as any,
+          v: this.coerceScalar(value),
+          t: this.getTypeCode(cellLike.type) as SheetJSType,
           ts: new Date().toISOString(),
         };
       }
     } else {
       // Regular value
-      const value = typeof excelCell.value === 'object' && 'richText' in excelCell.value
-        ? excelCell.value.richText.map((rt: any) => rt.text).join('')
-        : excelCell.value;
-      
-      cell.raw = value;
-      cell.dataType = this.getDataType(excelCell.type) as any;
+      const value = typeof cellLike.value === 'object' && cellLike.value && 'richText' in (cellLike.value as object)
+        ? (cellLike.value as { richText?: Array<{ text?: string }> }).richText!.map((rt) => rt.text || '').join('')
+        : cellLike.value;
+
+      cell.raw = this.coerceScalar(value);
+      cell.dataType = this.getDataType(cellLike.type) as CellDataType;
     }
     
     // Import number format
-    if (excelCell.numFmt) {
-      cell.numFmt = excelCell.numFmt;
-    }
+    if (cellLike.numFmt) cell.numFmt = cellLike.numFmt as string;
     
     // Import styles
-    if (excelCell.style) {
-      cell.style = this.extractCellStyle(excelCell);
-    }
+    if (cellLike.style) cell.style = this.extractCellStyle(cellLike as ExcelJSCellLike);
     
     // Import comments - stored separately in sheet.comments
     // Comments handled at sheet level
     
     return cell;
   }
+
+  private coerceScalar(v: unknown): string | number | boolean | null {
+    if (v === null) return null;
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+    if (v instanceof Date) return v.toISOString();
+    // Attempt to handle numeric-like objects (e.g., BigInt) or values with valueOf
+    try {
+      const prim = (v as any).valueOf?.();
+      if (typeof prim === 'string' || typeof prim === 'number' || typeof prim === 'boolean') return prim;
+      if (prim instanceof Date) return prim.toISOString();
+    } catch {
+      // ignore
+    }
+    // Fallback: stringify
+    return String(v);
+  }
+
+  // Replace generic applyCellStyle with one typed to project CellStyle so callers can pass `cell.style`
+  private applyCellStyle(excelCell: unknown, style: CellStyle | undefined) {
+    if (!style) return;
+    const cellObj = excelCell as Record<string, unknown>;
+    if (style.bold) cellObj.font = { ...((cellObj.font as object) || {}), bold: true };
+    if (style.italic) cellObj.font = { ...((cellObj.font as object) || {}), italic: true };
+    if (style.underline) cellObj.font = { ...((cellObj.font as object) || {}), underline: true };
+    if (style.strikethrough) cellObj.font = { ...((cellObj.font as object) || {}), strike: true };
+    if (style.color) cellObj.font = { ...((cellObj.font as object) || {}), color: { argb: style.color } };
+    if (style.fontSize) cellObj.font = { ...((cellObj.font as object) || {}), size: style.fontSize };
+    if (style.fontFamily) cellObj.font = { ...((cellObj.font as object) || {}), name: style.fontFamily };
+
+    if (style.bgColor) {
+      cellObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: style.bgColor } };
+    }
+
+    if (style.alignment) {
+      const a = style.alignment;
+      cellObj.alignment = {
+        horizontal: a.horizontal || 'left',
+        vertical: a.vertical || 'top',
+        wrapText: a.wrapText || false,
+      };
+    }
+
+    if (style.border) {
+      const sb = style.border;
+      const border: Record<string, unknown> = {};
+      if (sb.top) (border as any).top = { style: sb.top.style || 'thin', color: { argb: sb.top.color } };
+      if (sb.bottom) (border as any).bottom = { style: sb.bottom.style || 'thin', color: { argb: sb.bottom.color } };
+      if (sb.left) (border as any).left = { style: sb.left.style || 'thin', color: { argb: sb.left.color } };
+      if (sb.right) (border as any).right = { style: sb.right.style || 'thin', color: { argb: sb.right.color } };
+      cellObj.border = border;
+    }
+  }
   
-  private extractCellStyle(excelCell: any): any {
-    const style: any = {};
+  private extractCellStyle(excelCell: ExcelJSCellLike): Record<string, unknown> | undefined {
+    const style: Record<string, unknown> = {};
     
     // Extract font
     if (excelCell.font) {
-      if (excelCell.font.bold) style.bold = true;
-      if (excelCell.font.italic) style.italic = true;
-      if (excelCell.font.underline) style.underline = true;
-      if (excelCell.font.strike) style.strikethrough = true;
-      if (excelCell.font.color) style.color = excelCell.font.color.argb;
-      if (excelCell.font.size) style.fontSize = excelCell.font.size;
-      if (excelCell.font.name) style.fontFamily = excelCell.font.name;
+      const f = excelCell.font as Record<string, unknown>;
+      if (f['bold']) (style as any).bold = true;
+      if (f['italic']) (style as any).italic = true;
+      if (f['underline']) (style as any).underline = true;
+      if (f['strike']) (style as any).strikethrough = true;
+      if (f['color']) (style as any).color = (f['color'] as Record<string, unknown>).argb;
+      if (f['size']) (style as any).fontSize = f['size'];
+      if (f['name']) (style as any).fontFamily = f['name'];
     }
     
     // Extract fill
-    if (excelCell.fill?.fgColor) {
-      style.bgColor = excelCell.fill.fgColor.argb;
+    if (excelCell.fill && (excelCell.fill as Record<string, unknown>)['fgColor']) {
+      style.bgColor = ((excelCell.fill as Record<string, unknown>)['fgColor'] as Record<string, unknown>).argb;
     }
     
     // Extract alignment
     if (excelCell.alignment) {
-      style.alignment = {
-        horizontal: excelCell.alignment.horizontal || 'left',
-        vertical: excelCell.alignment.vertical || 'top',
-        wrapText: excelCell.alignment.wrapText || false,
+      const a = excelCell.alignment as Record<string, unknown>;
+      (style as any).alignment = {
+        horizontal: (a['horizontal'] as string) || 'left',
+        vertical: (a['vertical'] as string) || 'top',
+        wrapText: (a['wrapText'] as boolean) || false,
       };
     }
     
     // Extract borders
     if (excelCell.border) {
-      style.border = {};
-      if (excelCell.border.top) {
-        style.border.top = {
-          style: excelCell.border.top.style || 'thin',
-          color: excelCell.border.top.color?.argb,
-        };
-      }
-      if (excelCell.border.bottom) {
-        style.border.bottom = {
-          style: excelCell.border.bottom.style || 'thin',
-          color: excelCell.border.bottom.color?.argb,
-        };
-      }
-      if (excelCell.border.left) {
-        style.border.left = {
-          style: excelCell.border.left.style || 'thin',
-          color: excelCell.border.left.color?.argb,
-        };
-      }
-      if (excelCell.border.right) {
-        style.border.right = {
-          style: excelCell.border.right.style || 'thin',
-          color: excelCell.border.right.color?.argb,
-        };
-      }
+      const b = excelCell.border as Record<string, unknown>;
+      const border: Record<string, unknown> = {};
+      if (b['top']) (border as any).top = { style: ((b['top'] as Record<string, unknown>)['style'] as string) || 'thin', color: { argb: (b['top'] as Record<string, unknown>)['color'] ? ((b['top'] as Record<string, unknown>)['color'] as Record<string, unknown>)['argb'] : undefined } };
+      if (b['bottom']) (border as any).bottom = { style: ((b['bottom'] as Record<string, unknown>)['style'] as string) || 'thin', color: { argb: (b['bottom'] as Record<string, unknown>)['color'] ? ((b['bottom'] as Record<string, unknown>)['color'] as Record<string, unknown>)['argb'] : undefined } };
+      if (b['left']) (border as any).left = { style: ((b['left'] as Record<string, unknown>)['style'] as string) || 'thin', color: { argb: (b['left'] as Record<string, unknown>)['color'] ? ((b['left'] as Record<string, unknown>)['color'] as Record<string, unknown>)['argb'] : undefined } };
+      if (b['right']) (border as any).right = { style: ((b['right'] as Record<string, unknown>)['style'] as string) || 'thin', color: { argb: (b['right'] as Record<string, unknown>)['color'] ? ((b['right'] as Record<string, unknown>)['color'] as Record<string, unknown>)['argb'] : undefined } };
+      if (Object.keys(border).length > 0) (style as any).border = border;
     }
     
     return Object.keys(style).length > 0 ? style : undefined;
@@ -413,7 +534,7 @@ export class ExcelJSAdapter implements ExportAdapter {
     return `${colName}${row}`;
   }
   
-  private getTypeCode(type: any): string {
+  private getTypeCode(type: unknown): string {
     const typeMap: Record<string, string> = {
       number: 'n',
       string: 's',
@@ -421,10 +542,11 @@ export class ExcelJSAdapter implements ExportAdapter {
       date: 'd',
       error: 'e',
     };
-    return typeMap[type] || 's';
+    const key = typeof type === 'string' ? type : String(type ?? '');
+    return typeMap[key] || 's';
   }
   
-  private getDataType(type: any): string {
+  private getDataType(type: unknown): string {
     const typeMap: Record<string, string> = {
       number: 'number',
       string: 'string',
@@ -432,46 +554,8 @@ export class ExcelJSAdapter implements ExportAdapter {
       date: 'date',
       error: 'error',
     };
-    return typeMap[type] || 'string';
-  }
-
-  private applyCellStyle(excelCell: any, style: any) {
-    // Apply font styles
-    if (style.bold) excelCell.font = { ...excelCell.font, bold: true };
-    if (style.italic) excelCell.font = { ...excelCell.font, italic: true };
-    if (style.underline) excelCell.font = { ...excelCell.font, underline: true };
-    if (style.strikethrough) excelCell.font = { ...excelCell.font, strike: true };
-    if (style.color) excelCell.font = { ...excelCell.font, color: { argb: style.color } };
-    if (style.fontSize) excelCell.font = { ...excelCell.font, size: style.fontSize };
-    if (style.fontFamily) excelCell.font = { ...excelCell.font, name: style.fontFamily };
-
-    // Apply fill
-    if (style.bgColor) {
-      excelCell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: style.bgColor }
-      };
-    }
-
-    // Apply alignment
-    if (style.alignment) {
-      excelCell.alignment = {
-        horizontal: style.alignment.horizontal || 'left',
-        vertical: style.alignment.vertical || 'top',
-        wrapText: style.alignment.wrapText || false,
-      };
-    }
-
-    // Apply borders (simplified)
-    if (style.border) {
-      const border: any = {};
-      if (style.border.top) border.top = { style: style.border.top.style || 'thin', color: { argb: style.border.top.color } };
-      if (style.border.bottom) border.bottom = { style: style.border.bottom.style || 'thin', color: { argb: style.border.bottom.color } };
-      if (style.border.left) border.left = { style: style.border.left.style || 'thin', color: { argb: style.border.left.color } };
-      if (style.border.right) border.right = { style: style.border.right.style || 'thin', color: { argb: style.border.right.color } };
-      excelCell.border = border;
-    }
+    const key = typeof type === 'string' ? type : String(type ?? '');
+    return typeMap[key] || 'string';
   }
   
   /**

@@ -78,8 +78,9 @@ class TelemetryService {
    */
   track(event: TelemetryEvent): void {
     const flags = getFeatureFlags();
-    
-    if (!flags.telemetry.enabled) {
+
+    // Defensive: feature flags may be undefined in tests or minimal environments.
+    if (!flags || !flags.telemetry || !flags.telemetry.enabled) {
       return;
     }
     
@@ -322,5 +323,24 @@ export function trackDryRunError(workbookId: string, planId: string, error: stri
     workbookId,
     planId,
     metadata: { error, durationMs },
+  });
+}
+
+/**
+ * Track a HyperFormula version mismatch detected during hydration
+ * Safe payload: no raw workbook contents
+ */
+export function trackHFVersionMismatch(workbookId: string, staleCount: number, cacheVersion: string | undefined, currentVersion: string, sheetCount?: number): void {
+  telemetry.track({
+    eventType: 'dry-run-error', // reuse dry-run-error as a generic error bucket for now
+    timestamp: new Date().toISOString(),
+    workbookId,
+    metadata: {
+      type: 'hfVersion.mismatch',
+      staleCount,
+      cacheVersion,
+      currentVersion,
+      sheetCount,
+    },
   });
 }

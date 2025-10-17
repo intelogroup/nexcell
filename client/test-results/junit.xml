@@ -1,0 +1,1048 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="268" failures="0" errors="0" time="17.3821264">
+    <testsuite name="src/lib/workbook/accounting.edgecases.test.ts" timestamp="2025-10-17T14:49:17.527Z" hostname="LAPTOP-VN9VADIP" tests="4" failures="0" errors="0" skipped="0" time="0.3348715">
+        <testcase classname="src/lib/workbook/accounting.edgecases.test.ts" name="Accounting edge cases &gt; credit-only account reports credit balance" time="0.164713">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.edgecases.test.ts" name="Accounting edge cases &gt; zero-value journal entries ignored by sums" time="0.0045963">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.edgecases.test.ts" name="Accounting edge cases &gt; cross-sheet update recalculates dependent cells incrementally" time="0.1536965">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.edgecases.test.ts" name="Accounting edge cases &gt; small stress: many rows SUMIFS performance/consistency" time="0.0091665">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/accounting.formatting-and-namedranges.test.ts" timestamp="2025-10-17T14:49:17.533Z" hostname="LAPTOP-VN9VADIP" tests="5" failures="0" errors="0" skipped="0" time="0.2611032">
+        <testcase classname="src/lib/workbook/accounting.formatting-and-namedranges.test.ts" name="Formatting, negative balances, and named ranges &gt; negative balances show as credit when credits exceed debits" time="0.2367883">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.formatting-and-namedranges.test.ts" name="Formatting, negative balances, and named ranges &gt; rounding behavior for computed values" time="0.004717">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.formatting-and-namedranges.test.ts" name="Formatting, negative balances, and named ranges &gt; date boundary SUMIFS only includes rows within date range" time="0.0013039">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.formatting-and-namedranges.test.ts" name="Formatting, negative balances, and named ranges &gt; currency strings are parsed as numbers where possible and localized decimals are ignored" time="0.0098109">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.formatting-and-namedranges.test.ts" name="Formatting, negative balances, and named ranges &gt; named ranges vs whole-column references" time="0.0041063">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/accounting.incremental.test.ts" timestamp="2025-10-17T14:49:17.540Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.2060093">
+        <testcase classname="src/lib/workbook/accounting.incremental.test.ts" name="Incremental update behavior &gt; updateCellsAndRecompute updates minimal dependents and dependencyGraph is populated" time="0.2032183">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/accounting.workbook.test.ts" timestamp="2025-10-17T14:49:17.542Z" hostname="LAPTOP-VN9VADIP" tests="3" failures="0" errors="0" skipped="0" time="0.2834722">
+        <testcase classname="src/lib/workbook/accounting.workbook.test.ts" name="Accounting workbook fixture &gt; trial balance sums match ledger totals and debits equal credits" time="0.2056689">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.workbook.test.ts" name="Accounting workbook fixture &gt; income statement net income equals revenue - cogs - expenses" time="0.0057765">
+        </testcase>
+        <testcase classname="src/lib/workbook/accounting.workbook.test.ts" name="Accounting workbook fixture &gt; updating a ledger entry triggers recalculation" time="0.0679487">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/add-sheet.export.test.ts" timestamp="2025-10-17T14:49:17.546Z" hostname="LAPTOP-VN9VADIP" tests="4" failures="0" errors="0" skipped="0" time="0.4076835">
+        <testcase classname="src/lib/workbook/add-sheet.export.test.ts" name="add-sheet export round-trip &gt; preserves added sheets through export/import cycle" time="0.3707321">
+            <system-err>
+[SheetJSAdapter] Export warnings:
+Sheet &quot;Second Sheet&quot;, Cell A1: Formula &quot;=1+2&quot; missing computed value (computed.v). Excel will recalculate on open. Run recomputeAndPatchCache() before export.
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.export.test.ts" name="add-sheet export round-trip &gt; handles sheet visibility and properties in export" time="0.0146657">
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.export.test.ts" name="add-sheet export round-trip &gt; respects sheet visibility during export" time="0.0098649">
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.export.test.ts" name="add-sheet export round-trip &gt; preserves activeTab through export/import cycle" time="0.0087212">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/add-sheet.test.ts" timestamp="2025-10-17T14:49:17.551Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.0117158">
+        <testcase classname="src/lib/workbook/add-sheet.test.ts" name="addSheet helper &gt; creates unique sheet with default values and updates workbook meta" time="0.0075406">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/add-sheet.undo.test.ts" timestamp="2025-10-17T14:49:17.555Z" hostname="LAPTOP-VN9VADIP" tests="5" failures="0" errors="0" skipped="0" time="0.0142845">
+        <testcase classname="src/lib/workbook/add-sheet.undo.test.ts" name="add-sheet undo/redo &gt; can undo adding a sheet" time="0.0055698">
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.undo.test.ts" name="add-sheet undo/redo &gt; can redo adding a sheet after undo" time="0.0012924">
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.undo.test.ts" name="add-sheet undo/redo &gt; preserves sheet data through undo/redo cycle" time="0.0008798">
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.undo.test.ts" name="add-sheet undo/redo &gt; handles multiple sheet additions with undo/redo" time="0.002339">
+        </testcase>
+        <testcase classname="src/lib/workbook/add-sheet.undo.test.ts" name="add-sheet undo/redo &gt; updates activeTab correctly through undo/redo" time="0.0008814">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/basic-cell-operations.test.ts" timestamp="2025-10-17T14:49:17.561Z" hostname="LAPTOP-VN9VADIP" tests="49" failures="0" errors="0" skipped="0" time="0.0619965">
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a numeric cell value" time="0.0036795">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a string cell value" time="0.0006606">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a boolean cell value" time="0.0005851">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a null cell value" time="0.0006997">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a cell with a formula" time="0.0005105">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a cell with style properties" time="0.0006802">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a cell with number format" time="0.0005472">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set a cell with computed value" time="0.0005314">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should set cells in various positions (A1, Z10, AA100)" time="0.000629">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should update workbook modifiedAt timestamp" time="0.0039758">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Set Cell Value (Create) &gt; should throw error for invalid sheet ID" time="0.0017054">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Get Cell Value (Read) &gt; should get an existing cell" time="0.0005295">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Get Cell Value (Read) &gt; should return undefined for non-existent cell" time="0.0003801">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Get Cell Value (Read) &gt; should return undefined for invalid sheet ID" time="0.0003336">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Get Cell Value (Read) &gt; should get cells with all property types intact" time="0.0005486">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Get Cell Value (Read) &gt; should get multiple different cells independently" time="0.000405">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Get Cell Value (Read) &gt; should handle cells with special characters in values" time="0.0005576">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should update an existing cell value" time="0.0004129">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should update cell from number to string" time="0.0004298">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should update cell from value to formula" time="0.000321">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should update cell from formula to value" time="0.0003366">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should update cell style without losing value" time="0.0003386">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should replace entire cell object on update" time="0.0003636">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should update multiple cells sequentially" time="0.0003781">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Update Cell Value (Update) &gt; should handle rapid updates to same cell" time="0.0003133">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should delete an existing cell" time="0.0004298">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should not throw when deleting non-existent cell" time="0.000588">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should handle deleting from invalid sheet gracefully" time="0.000472">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should delete cell with formula" time="0.0003793">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should delete cell with complex properties" time="0.0003297">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should delete specific cell without affecting neighbors" time="0.0004547">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should delete and recreate cell" time="0.0003561">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should update modifiedAt timestamp on delete" time="0.0043149">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Clear Cell Value (Delete) &gt; should delete multiple cells" time="0.000887">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle setting null explicitly" time="0.0003687">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle undefined values" time="0.0002934">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle very large numbers" time="0.0003452">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle very small numbers" time="0.0002911">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle floating point numbers" time="0.0003218">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle empty string" time="0.0002651">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle very long strings" time="0.0002698">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle date objects (stored as ISO string or number)" time="0.0003143">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle cells in all columns A-ZZ" time="0.0005605">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should handle cells in high row numbers" time="0.0003625">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Edge Cases and Error Handling &gt; should preserve object references correctly" time="0.0003752">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Multiple Sheets Operations &gt; should set cells in different sheets independently" time="0.0004822">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Performance Tests &gt; should handle setting 1000 cells efficiently" time="0.0059147">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Performance Tests &gt; should handle getting 1000 cells efficiently" time="0.0065085">
+        </testcase>
+        <testcase classname="src/lib/workbook/basic-cell-operations.test.ts" name="Basic Cell Operations &gt; Performance Tests &gt; should handle updating 1000 cells efficiently" time="0.0122198">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/common-functions.test.ts" timestamp="2025-10-17T14:49:17.612Z" hostname="LAPTOP-VN9VADIP" tests="17" failures="0" errors="0" skipped="0" time="0.6669486">
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Error scenarios: #DIV/0!, #REF!, #VALUE!, #NAME?" time="0.1269726">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Cross-sheet formulas: Sheet1!A1, &apos;Sheet Name&apos;!B2 references" time="0.0695357">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; SUM function with ranges and individual cells" time="0.0498141">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; AVERAGE function" time="0.0207867">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; COUNT functions (COUNT, COUNTA, COUNTBLANK)" time="0.0255582">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; IF function with simple and nested conditions" time="0.0406633">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Logical functions (AND, OR, NOT)" time="0.0327991">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; VLOOKUP function" time="0.0301485">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; CONCATENATE function" time="0.0354523">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; MAX and MIN functions" time="0.0247011">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Rounding functions (ROUND, ROUNDUP, ROUNDDOWN)" time="0.0209845">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Text functions (LEN, TRIM, LEFT, RIGHT, MID, UPPER, LOWER)" time="0.0208676">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Date functions (DATE, YEAR, MONTH, DAY)" time="0.0304522">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Math functions (ABS, SQRT, POWER, MOD, PI)" time="0.0329068">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Statistical functions (MEDIAN, STDEV, VAR)" time="0.0340868">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Complex nested formulas" time="0.0415327">
+        </testcase>
+        <testcase classname="src/lib/workbook/common-functions.test.ts" name="Common Excel Functions &gt; Cell reference types: relative, absolute, mixed" time="0.0205309">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/cross-sheet.edgecases.test.ts" timestamp="2025-10-17T14:49:17.625Z" hostname="LAPTOP-VN9VADIP" tests="3" failures="0" errors="0" skipped="0" time="0.5809497">
+        <testcase classname="src/lib/workbook/cross-sheet.edgecases.test.ts" name="hidden sheet references still compute correctly" time="0.1544107">
+        </testcase>
+        <testcase classname="src/lib/workbook/cross-sheet.edgecases.test.ts" name="workbook-scoped named range preserved through export/import" time="0.365836">
+        </testcase>
+        <testcase classname="src/lib/workbook/cross-sheet.edgecases.test.ts" name="sheet-scoped named range collision resolution (last wins) behavior" time="0.0578291">
+            <system-out>
+IMPORTED workbook.namedRanges: {}
+IMPORTED s1.namedRanges: { Local: [32m&apos;Sheet2!$A$1&apos;[39m } IMPORTED s2.namedRanges: {}
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/expert-user-incremental.test.ts" timestamp="2025-10-17T14:49:17.628Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.2351234">
+        <testcase classname="src/lib/workbook/expert-user-incremental.test.ts" name="expert incremental/operations stress &gt; applies operations, incrementally recomputes and supports undo/redo" time="0.2320949">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/expert-user-perf.test.ts" timestamp="2025-10-17T14:49:17.632Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="1" time="0">
+        <testcase classname="src/lib/workbook/expert-user-perf.test.ts" name="performance: large range recompute (100x10)" time="0">
+            <skipped/>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/expert-user-stress.test.ts" timestamp="2025-10-17T14:49:17.634Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.225182">
+        <testcase classname="src/lib/workbook/expert-user-stress.test.ts" name="expert user stress tests &gt; handles cross-sheet dependencies, array-like formulas, volatile functions and undo/redo" time="0.2221249">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/export-to-disk.test.ts" timestamp="2025-10-17T14:49:17.635Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.3535205">
+        <testcase classname="src/lib/workbook/export-to-disk.test.ts" name="optional: export XLSX to disk for manual Excel validation" time="0.3509639">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/formula-dependencies.test.ts" timestamp="2025-10-17T14:49:17.639Z" hostname="LAPTOP-VN9VADIP" tests="20" failures="0" errors="0" skipped="0" time="1.9303357">
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Simple Linear Dependency Chain &gt; should propagate changes through simple chain A1 → B1 → C1" time="0.1163064">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Simple Linear Dependency Chain &gt; should handle longer chains A1 → B1 → C1 → D1 → E1" time="0.0291241">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Simple Linear Dependency Chain &gt; should update intermediate cell in chain" time="0.0509252">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Multiple Dependents (Fan-out) &gt; should update all dependents when source changes" time="0.0704971">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Multiple Dependents (Fan-out) &gt; should handle fan-out with ranges" time="0.0363547">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Multiple Sources (Fan-in) &gt; should update when any source changes" time="0.0245984">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Multiple Sources (Fan-in) &gt; should handle complex fan-in patterns" time="0.0262761">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Complex Dependency Graphs &gt; should handle diamond dependency pattern" time="0.0397437">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Complex Dependency Graphs &gt; should handle multi-level dependency web" time="0.0562175">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Complex Dependency Graphs &gt; should handle cross-referencing formulas" time="0.0648896">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Circular Reference Handling &gt; should handle simple circular reference A1 → B1 → A1" time="0.049597">
+            <system-out>
+Circular ref A1: #CYCLE! type: e
+Circular ref B1: #CYCLE! type: e
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Circular Reference Handling &gt; should handle indirect circular reference A1 → B1 → C1 → A1" time="0.0234971">
+            <system-out>
+Indirect circular A1: #CYCLE!
+Indirect circular B1: #CYCLE!
+Indirect circular C1: #CYCLE!
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Dependency Updates on Cell Deletion &gt; should create #REF! error when dependency is deleted" time="0.0364934">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Dependency Updates on Cell Deletion &gt; should handle chain when middle cell is deleted" time="0.034307">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Cross-Sheet Dependencies &gt; should propagate changes across sheets" time="0.0699034">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Cross-Sheet Dependencies &gt; should handle cross-sheet dependency chains" time="0.0389267">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Performance and Stress Tests &gt; should handle large dependency chain efficiently" time="0.8849893">
+            <system-out>
+HEAVY_OP_MS compute:175
+HEAVY_OP_MS compute:292
+HEAVY_OP_MS compute:33
+HEAVY_OP_MS compute:37
+HEAVY_OP_MS compute:88
+HEAVY_OP_MS update:13
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Performance and Stress Tests &gt; should handle wide dependency graph (one source, many dependents)" time="0.1944253">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Dependency Graph Metadata &gt; should populate dependency graph in workbook.computed" time="0.0606483">
+        </testcase>
+        <testcase classname="src/lib/workbook/formula-dependencies.test.ts" name="Formula Dependency Chain Tests &gt; Dependency Graph Metadata &gt; should track dependencies correctly in complex graph" time="0.0189897">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hf-error-edgecases.test.ts" timestamp="2025-10-17T14:49:17.656Z" hostname="LAPTOP-VN9VADIP" tests="3" failures="0" errors="0" skipped="0" time="0.2947396">
+        <testcase classname="src/lib/workbook/hf-error-edgecases.test.ts" name="HyperFormula edge-case error tests &gt; maps #NUM! for invalid numeric operations (e.g., SQRT(-1))" time="0.1138404">
+        </testcase>
+        <testcase classname="src/lib/workbook/hf-error-edgecases.test.ts" name="HyperFormula edge-case error tests &gt; maps #NULL! for invalid range intersection" time="0.053272">
+        </testcase>
+        <testcase classname="src/lib/workbook/hf-error-edgecases.test.ts" name="HyperFormula edge-case error tests &gt; behaves consistently when evaluateNullToZero toggled in HF config" time="0.1250901">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hf-error-mapping.test.ts" timestamp="2025-10-17T14:49:17.658Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.2102013">
+        <testcase classname="src/lib/workbook/hf-error-mapping.test.ts" name="HyperFormula error mapping: division by zero -&gt; computed.t === &quot;e&quot;" time="0.2075497">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hf-error-regression.test.ts" timestamp="2025-10-17T14:49:17.659Z" hostname="LAPTOP-VN9VADIP" tests="5" failures="0" errors="0" skipped="0" time="0.2698858">
+        <testcase classname="src/lib/workbook/hf-error-regression.test.ts" name="HyperFormula error regression tests &gt; maps #DIV/0! (=1/0) to computed.t === &apos;e&apos; and computed.v === &apos;#DIV/0!&apos;" time="0.1334953">
+        </testcase>
+        <testcase classname="src/lib/workbook/hf-error-regression.test.ts" name="HyperFormula error regression tests &gt; maps #NAME? (=FOOBAR()) to computed.t === &apos;e&apos; and computed.v === &apos;#NAME?&apos;" time="0.0362835">
+        </testcase>
+        <testcase classname="src/lib/workbook/hf-error-regression.test.ts" name="HyperFormula error regression tests &gt; maps #REF!,#NAME? (=INDIRECT(&quot;SheetDoesNotExist!A1&quot;)) to computed.t === &apos;e&apos; and computed.v === &apos;#REF!,#NAME?&apos;" time="0.035242">
+        </testcase>
+        <testcase classname="src/lib/workbook/hf-error-regression.test.ts" name="HyperFormula error regression tests &gt; maps #VALUE! (=&quot;text&quot;+1) to computed.t === &apos;e&apos; and computed.v === &apos;#VALUE!&apos;" time="0.0230757">
+        </testcase>
+        <testcase classname="src/lib/workbook/hf-error-regression.test.ts" name="HyperFormula error regression tests &gt; maps #N/A (=NA()) to computed.t === &apos;e&apos; and computed.v === &apos;#N/A&apos;" time="0.0381753">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hf-version-invalidation.test.ts" timestamp="2025-10-17T14:49:17.662Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.2392261">
+        <testcase classname="src/lib/workbook/hf-version-invalidation.test.ts" name="HyperFormula hfVersion invalidation &gt; should skip stale computed cache and recompute with current hfVersion" time="0.2359442">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hf-version-telemetry.test.ts" timestamp="2025-10-17T14:49:17.663Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.1610573">
+        <testcase classname="src/lib/workbook/hf-version-telemetry.test.ts" name="HF version telemetry &gt; emits telemetry when cached computed values have mismatched hfVersion" time="0.1583209">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hyperformula-exploration.test.ts" timestamp="2025-10-17T14:49:17.664Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.5712891">
+        <testcase classname="src/lib/workbook/hyperformula-exploration.test.ts" name="HyperFormula Exploration &gt; should explore all HyperFormula features" time="0.5686169">
+            <system-out>
+🔬 HyperFormula Exploration &amp; Testing
+  ============================================================
+  Understanding how HyperFormula works with the workbook
+  ============================================================
+  
+  📝 Section 1: Basic Cell Operations
+    ------------------------------------------------------------
+    Creating a simple workbook with basic values...
+    ✓ Set values: A1=42, A2=&apos;Hello&apos;, A3=true, A4=3.14159
+    ✓ HyperFormula loaded (updated 0 cells)
+    
+    Cell values retrieved:
+      A1: 42 (type: number)
+      A2: Hello (type: string)
+      A3: true (type: boolean)
+      A4: 3.14159 (type: number)
+    
+    Updating A1 from 42 to 100...
+    ✓ A1 updated: 100
+    
+    Clearing A2...
+    ✓ A2 cleared: null
+    
+    ✅ Basic cell operations work correctly!
+  
+  🧮 Section 2: Simple Formulas
+    ------------------------------------------------------------
+    Creating formulas with basic arithmetic...
+    ✓ Formulas created:
+      B1 = A1+A2 (10+20)
+      B2 = A1*A2 (10*20)
+      B3 = A2/A1 (20/10)
+      B4 = A3-A1 (30-10)
+      B5 = SUM(A1:A3) (10+20+30)
+    
+    ✓ Computed 5 formulas
+    
+    Computed results:
+      B1 = 30 (expected: 30)
+      B2 = 200 (expected: 200)
+      B3 = 2 (expected: 2)
+      B4 = 20 (expected: 20)
+      B5 = 60 (expected: 60)
+    
+    Computed value metadata:
+      Type: n (number)
+      Timestamp: 2025-10-17T14:48:40
+      HF Version: 3.1.0
+      Computed By: hf-3.1.0
+    
+    ✅ Simple formulas compute correctly!
+  
+  🔗 Section 3: Cell References
+    ------------------------------------------------------------
+    Testing different types of cell references...
+    ✓ Formulas with different reference types:
+      C1 = A1+B1 (relative: 100+10)
+      C2 = $A$1+$B$1 (absolute: 100+10)
+      C3 = $A1+B$1 (mixed: 100+10)
+    
+    ✓ Computed 3 formulas
+    
+    Computed results:
+      C1 = 110 (expected: 110)
+      C2 = 110 (expected: 110)
+      C3 = 110 (expected: 110)
+    
+    Testing reference update behavior...
+    Updating A1 from 100 to 500...
+      C1 = 510 (expected: 510)
+      C2 = 510 (expected: 510)
+      C3 = 510 (expected: 510)
+    
+    ✅ Cell references work correctly!
+  
+  🔄 Section 4: Formula Dependencies
+    ------------------------------------------------------------
+    Creating a dependency chain: A1 → B1 → C1 → D1
+    ✓ Formula chain created:
+      A1 = 5 (raw value)
+      B1 = A1*2 (depends on A1)
+      C1 = B1+10 (depends on B1)
+      D1 = C1*3 (depends on C1)
+    
+    ✓ Initial computation (3 cells)
+    
+    Initial computed values:
+      B1 = 10 (5*2 = 10)
+      C1 = 20 (10+10 = 20)
+      D1 = 60 (20*3 = 60)
+    
+    📊 Testing dependency propagation...
+    Updating A1 from 5 to 10...
+    
+    After A1 update, all dependent cells recalculate:
+      B1 = 20 (10*2 = 20)
+      C1 = 30 (20+10 = 30)
+      D1 = 90 (30*3 = 90)
+    
+    📈 Dependency graph:
+      Sheet1!B1 → [Sheet1!A1]
+      Sheet1!C1 → [Sheet1!B1]
+      Sheet1!D1 → [Sheet1!C1]
+    
+    ✅ Formula dependencies propagate correctly!
+  
+  📊 Section 5: Common Excel Functions
+    ------------------------------------------------------------
+    Testing common Excel functions...
+    ✓ Functions created:
+      B1 = SUM(A1:A5)
+      B2 = AVERAGE(A1:A5)
+      B3 = COUNT(A1:A5)
+      B4 = MIN(A1:A5)
+      B5 = MAX(A1:A5)
+      B6 = IF(A1&gt;15, &quot;High&quot;, &quot;Low&quot;)
+      B7 = ROUND(B2, 0)
+      B8 = CONCATENATE(&quot;Sum: &quot;, B1)
+    
+    ✓ Computed 8 formulas
+    
+    Computed results:
+      ✓ SUM: B1 = 150 (expected: 150)
+      ✓ AVERAGE: B2 = 30 (expected: 30)
+      ✓ COUNT: B3 = 5 (expected: 5)
+      ✓ MIN: B4 = 10 (expected: 10)
+      ✓ MAX: B5 = 50 (expected: 50)
+      ✓ IF: B6 = Low (expected: Low)
+      ✓ ROUND: B7 = 30 (expected: 30)
+      ✓ CONCATENATE: B8 = Sum: 150 (expected: Sum: 150)
+    
+    ✅ Common Excel functions work correctly!
+  
+  ⚠️  Section 6: Error Handling
+    ------------------------------------------------------------
+    Creating formulas with various error conditions...
+    ✓ Error scenarios created:
+      B1 = A1/A2 (10/0 → #DIV/0!)
+      B2 = INVALID_FUNC(A1) (→ #NAME?)
+      B3 = A1+A3 (10+&quot;text&quot; → #VALUE!)
+      B4 = SUM(Z999:Z1000) (empty range → 0)
+    
+    ✓ Computed 4 formulas
+    ⚠️  3 errors detected
+    
+    Error details:
+      B1: type=e, error=&quot;#DIV/0!&quot;
+      B2: type=e, error=&quot;#NAME?&quot;
+      B3: type=e, error=&quot;#VALUE!&quot;
+      B4: value=0 (no error - empty range sums to 0)
+    
+    Error log:
+      1. 680a1f75-ea6d-4794-ba5e-f6b3dc6d8e61!B1: #DIV/0!
+      2. 680a1f75-ea6d-4794-ba5e-f6b3dc6d8e61!B2: #NAME?
+      3. 680a1f75-ea6d-4794-ba5e-f6b3dc6d8e61!B3: #VALUE!
+    
+    ✅ Error handling works correctly!
+  
+  ⚡ Section 7: Performance Test
+    ------------------------------------------------------------
+    Creating large dataset...
+    ✓ Created 1000 cells in 4.79ms
+    
+    Adding summary formulas...
+    Computing all formulas...
+    
+    ✓ Computed 10 formulas in 157.73ms
+      Average: 15.773ms per formula
+    
+    Testing incremental update performance...
+    ✓ Updated 1 cell and recomputed dependents in 53.08ms
+    
+    Sample summary results:
+      Column A sum: 6048
+      Column B sum: 10100
+      Column C sum: 15150
+    
+    ✅ Performance test completed!
+  
+  💼 Section 8: Real-world Budget Calculator
+    ------------------------------------------------------------
+    Building a monthly budget calculator...
+    
+    Setting up budget categories...
+    ✓ Budget structure created
+      - 5 expense categories
+      - 17 formulas total
+    
+    Computing budget...
+    ✓ Computed 19 formulas
+    
+    📊 Budget Summary:
+    ------------------------------------------------------------
+    Income:           $5200
+    Total Budget:     $2800
+    Total Actual:     $2965
+    Difference:       $165
+    
+    Net (Budgeted):   $2200
+    Net (Actual):     $2235
+    Status:           Surplus
+    
+    📋 Category Breakdown:
+      Rent: $0 (Good)
+      Groceries: $80 (Over)
+      Utilities: $-15 (Good)
+      Transportation: $50 (Over)
+      Entertainment: $50 (Over)
+    
+    ✅ Real-world scenario works perfectly!
+  
+  ============================================================
+  ✅ All explorations completed successfully!
+  ============================================================
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hyperformula.config.test.ts" timestamp="2025-10-17T14:49:17.666Z" hostname="LAPTOP-VN9VADIP" tests="12" failures="0" errors="0" skipped="0" time="0.1904019">
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; DEFAULT_HF_CONFIG &gt; should have a valid nullYear value (≤ 100)" time="0.0027152">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; DEFAULT_HF_CONFIG &gt; should initialize HyperFormula without throwing" time="0.1078797">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; DEFAULT_HF_CONFIG &gt; should use nullYear=30 for Excel-like behavior" time="0.0026257">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Invalid nullYear values &gt; should reject nullYear &gt; 100 (4-digit years)" time="0.0011879">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Invalid nullYear values &gt; should reject nullYear=2030" time="0.0010839">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Invalid nullYear values &gt; should accept nullYear=0 (edge case)" time="0.0333357">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Invalid nullYear values &gt; should accept nullYear=100 (max valid)" time="0.0351649">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Config completeness &gt; should have GPL v3 license key" time="0.0003736">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Config completeness &gt; should enable array arithmetic" time="0.0003486">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Config completeness &gt; should use A1 notation (not column index)" time="0.0010027">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Config completeness &gt; should have Excel-compatible separators" time="0.0004821">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.config.test.ts" name="HyperFormula Configuration &gt; Config completeness &gt; should enable Excel leap year bug compatibility" time="0.0003004">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hyperformula.hydration.test.ts" timestamp="2025-10-17T14:49:17.674Z" hostname="LAPTOP-VN9VADIP" tests="5" failures="0" errors="0" skipped="0" time="0.3804105">
+        <testcase classname="src/lib/workbook/hyperformula.hydration.test.ts" name="HyperFormula Hydration &gt; Single Sheet Hydration" time="0.1365139">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.hydration.test.ts" name="HyperFormula Hydration &gt; Multiple Sheet Hydration" time="0.0923943">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.hydration.test.ts" name="HyperFormula Hydration &gt; Empty Workbook Hydration should throw" time="0.0025222">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.hydration.test.ts" name="HyperFormula Hydration &gt; Hydration with Cells and Formulas" time="0.1162677">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.hydration.test.ts" name="HyperFormula Hydration &gt; Special Characters in Sheet Names" time="0.0299049">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/hyperformula.test.ts" timestamp="2025-10-17T14:49:17.677Z" hostname="LAPTOP-VN9VADIP" tests="10" failures="0" errors="0" skipped="0" time="0.450557">
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Basic hydration" time="0.1206642">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Formula computation and result caching" time="0.0369874">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Cache persistence in workbook" time="0.0402192">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Bidirectional coordinate mapping" time="0.0443711">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Incremental updates" time="0.0223244">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Error handling" time="0.0292385">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Dependency tracking" time="0.0393642">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Multi-sheet formulas" time="0.0324482">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; Complex formulas" time="0.0585234">
+        </testcase>
+        <testcase classname="src/lib/workbook/hyperformula.test.ts" name="HyperFormula integration &gt; HF disposal and cleanup" time="0.0236248">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/operations.test.ts" timestamp="2025-10-17T14:49:17.683Z" hostname="LAPTOP-VN9VADIP" tests="10" failures="0" errors="0" skipped="0" time="0.2656472">
+        <testcase classname="src/lib/workbook/operations.test.ts" name="Workbook Properties &gt; initialization" time="0.0044898">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="Workbook Properties &gt; clone preserves properties" time="0.0011261">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="Workbook Properties &gt; modification" time="0.0007095">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="Workbook Properties &gt; works with multiple sheets" time="0.0010162">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="Workbook Properties &gt; serialization" time="0.0007243">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="HyperFormula Hydration &gt; Single Sheet Hydration" time="0.1265284">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="HyperFormula Hydration &gt; Multiple Sheet Hydration" time="0.0369471">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="HyperFormula Hydration &gt; Empty Workbook Hydration should throw" time="0.0030849">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="HyperFormula Hydration &gt; Hydration with Cells and Formulas" time="0.0505766">
+        </testcase>
+        <testcase classname="src/lib/workbook/operations.test.ts" name="HyperFormula Hydration &gt; Special Characters in Sheet Names" time="0.0289421">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/production-readiness.test.ts" timestamp="2025-10-17T14:49:17.689Z" hostname="LAPTOP-VN9VADIP" tests="14" failures="0" errors="0" skipped="5" time="1.9202391">
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 1: Round-trip formula fidelity &gt; should preserve common formulas through export/import cycle" time="0.5935622">
+            <system-out>
+
+[TEST 1] Created workbook with formulas
+[TEST 1] HyperFormula hydration: 0 warnings
+[TEST 1] Recomputed: 9 cells, 1 errors
+  - ERROR: C3 - #NAME?
+[TEST 1] Original formulas: 9
+[TEST 1] Original computed values: {
+  B1: [33m150[39m,
+  B2: [33m30[39m,
+  B3: [32m&apos;Low&apos;[39m,
+  B4: [32m&apos;Error&apos;[39m,
+  C3: [32m&apos;#NAME?&apos;[39m,
+  D2: [32m&apos;Test&apos;[39m,
+  D3: [32m&apos;ing&apos;[39m,
+  E1: [33m45307[39m,
+  H2: [33m200[39m
+}
+
+[TEST 1] Exported to XLSX: 16773 bytes
+
+[TEST 1] Imported workbook: 1 sheets
+[TEST 1] Imported formulas: 9
+[TEST 1] Imported computed values: {
+  B1: [33m150[39m,
+  E1: [33m45307[39m,
+  B2: [33m30[39m,
+  D2: [32m&apos;Test&apos;[39m,
+  H2: [33m200[39m,
+  B3: [32m&apos;Low&apos;[39m,
+  C3: [1mnull[22m,
+  D3: [32m&apos;ing&apos;[39m,
+  B4: [32m&apos;Error&apos;[39m
+}
+[TEST 1] Recomputed imported: 9 cells, 1 errors
+[TEST 1] Recomputed values after import: {
+  B1: [33m150[39m,
+  E1: [33m45307[39m,
+  B2: [33m30[39m,
+  D2: [32m&apos;Test&apos;[39m,
+  H2: [33m200[39m,
+  B3: [32m&apos;Low&apos;[39m,
+  C3: [32m&apos;#NAME?&apos;[39m,
+  D3: [32m&apos;ing&apos;[39m,
+  B4: [32m&apos;Error&apos;[39m
+}
+
+[TEST 1] RESULTS:
+  Formula preservation: 9/9
+  Value consistency: 9/9
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 2: Deterministic dry-run &gt; should produce identical results across 10 runs" time="0.6599291">
+            <system-out>
+
+[TEST 2] Running 10 deterministic dry-runs...
+[TEST 2] Run 1: {&quot;updatedCells&quot;:2,&quot;errors&quot;:[],&quot;computed&quot;:[{&quot;addr&quot;:&quot;A2&quot;,&quot;v&quot;:200},{&quot;addr&quot;:&quot;A3&quot;,&quot;v&quot;:300}]}...
+[TEST 2] Unique results: 1 (expected: 1)
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 3: Named ranges &amp; cross-sheet references &gt; should handle cross-sheet formulas" time="0.0463575">
+            <system-out>
+
+[TEST 3] Testing cross-sheet references...
+[TEST 3] Hydration warnings: 0
+[TEST 3] Recompute errors: 0
+[TEST 3] B1 computed value: 300 (expected: 300)
+
+[TEST 3] Imported B1 formula: =Data!A1+Data!A2
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 3: Named ranges &amp; cross-sheet references &gt; should handle named ranges (NOT IMPLEMENTED)" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 4: Volatile &amp; locale-sensitive functions &gt; should handle volatile functions (NOW, TODAY, RAND)" time="0.2183996">
+            <system-out>
+
+[TEST 4] Testing volatile functions...
+[TEST 4] First computation: { now: [33m45948.4503587963[39m, today: [33m45948[39m, rand: [33m0.657652633718634[39m }
+
+[TEST 4] Second computation: { now: [33m45948.4503587963[39m, today: [33m45948[39m, rand: [33m0.572583873300997[39m }
+[TEST 4] Are volatile functions marked? { nowHasTs: [33mtrue[39m, todayHasTs: [33mtrue[39m, randHasTs: [33mtrue[39m }
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 5: Merged ranges, row/col sizing, freeze panes &gt; should preserve merged ranges through export/import" time="0.0312092">
+            <system-out>
+
+[TEST 5] Testing merged ranges...
+[TEST 5] Original merges: [ [32m&apos;A1:C1&apos;[39m, [32m&apos;A2:A4&apos;[39m ]
+
+[TEST 5] Imported merges: [ [32m&apos;A1:C1&apos;[39m, [32m&apos;A2:A4&apos;[39m ]
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 5: Merged ranges, row/col sizing, freeze panes &gt; should preserve column widths and row heights" time="0.0676663">
+            <system-out>
+
+[TEST 5] Testing column/row sizing...
+[TEST 5] Original cols: {
+  [32m&apos;1&apos;[39m: { width: [33m200[39m, hidden: [33mfalse[39m },
+  [32m&apos;2&apos;[39m: { width: [33m100[39m, hidden: [33mfalse[39m }
+}
+[TEST 5] Original rows: {
+  [32m&apos;1&apos;[39m: { height: [33m40[39m, hidden: [33mfalse[39m },
+  [32m&apos;2&apos;[39m: { height: [33m20[39m, hidden: [33mfalse[39m }
+}
+
+[TEST 5] Imported cols: {
+  [32m&apos;1&apos;[39m: { width: [33m202.29999999999998[39m, hidden: [33mfalse[39m },
+  [32m&apos;2&apos;[39m: { width: [33m102.2[39m, hidden: [33mfalse[39m }
+}
+[TEST 5] Imported rows: {
+  [32m&apos;1&apos;[39m: { height: [33m40[39m, hidden: [33mfalse[39m },
+  [32m&apos;2&apos;[39m: { height: [33m20[39m, hidden: [33mfalse[39m }
+}
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 5: Merged ranges, row/col sizing, freeze panes &gt; should preserve freeze panes (NOT FULLY IMPLEMENTED)" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 6: Data types &amp; number formats &gt; should preserve data types and number formats" time="0.1251444">
+            <system-out>
+
+[TEST 6] Testing data types and formats...
+
+[TEST 6] A1: { raw: [33m123.45[39m, dataType: [32m&apos;number&apos;[39m, numFmt: [32m&apos;0.00&apos;[39m }
+[TEST 6] A2: { raw: [32m&apos;Hello&apos;[39m, dataType: [32m&apos;string&apos;[39m, numFmt: [32m&apos;General&apos;[39m }
+[TEST 6] A3: { raw: [33mtrue[39m, dataType: [32m&apos;boolean&apos;[39m, numFmt: [32m&apos;General&apos;[39m }
+[TEST 6] A4: { raw: [33m44927[39m, dataType: [32m&apos;number&apos;[39m, numFmt: [32m&apos;mm/dd/yyyy&apos;[39m }
+[TEST 6] A5: { raw: [33m0.5[39m, dataType: [32m&apos;number&apos;[39m, numFmt: [32m&apos;0.00%&apos;[39m }
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 7: Computed cache correctness &amp; hfVersion &gt; should include v, ts, hfVersion in computed entries" time="0.070962">
+            <system-out>
+
+[TEST 7] Testing computed cache structure...
+[TEST 7] Computed structure: {
+  v: [33m20[39m,
+  ts: [32m&apos;2025-10-17T14:48:31.899Z&apos;[39m,
+  hfVersion: [32m&apos;3.1.0&apos;[39m,
+  computedBy: [32m&apos;hf-3.1.0&apos;[39m,
+  t: [32m&apos;n&apos;[39m
+}
+[TEST 7] Has hfVersion? [33mtrue[39m
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 7: Computed cache correctness &amp; hfVersion &gt; should invalidate cache on hfVersion mismatch (NOT IMPLEMENTED)" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 8: Undo/Redo integrity &gt; should support undo/redo (NOT FULLY IMPLEMENTED)" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 9: Stale-plan detection &gt; should detect stale plans (NOT IMPLEMENTED)" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="src/lib/workbook/production-readiness.test.ts" name="PRODUCTION READINESS - Top 10 Critical Tests &gt; Test 10: Error handling &gt; should report cell-level errors for invalid formulas" time="0.091141">
+            <system-out>
+
+[TEST 10] Testing error handling...
+[TEST 10] Hydration warnings: [33m1[39m
+  - Formula error in Sheet1!A3: #ERROR!
+[TEST 10] Recompute errors: [33m3[39m
+  - A1: #DIV/0!
+  - A2: #NAME?
+  - A3: #ERROR!
+[TEST 10] A1 computed: {
+  v: [32m&apos;#DIV/0!&apos;[39m,
+  ts: [32m&apos;2025-10-17T14:48:31.992Z&apos;[39m,
+  hfVersion: [32m&apos;3.1.0&apos;[39m,
+  computedBy: [32m&apos;hf-3.1.0&apos;[39m,
+  t: [32m&apos;e&apos;[39m,
+  error: [32m&apos;#DIV/0!&apos;[39m
+}
+[TEST 10] A2 computed: {
+  v: [32m&apos;#NAME?&apos;[39m,
+  ts: [32m&apos;2025-10-17T14:48:31.992Z&apos;[39m,
+  hfVersion: [32m&apos;3.1.0&apos;[39m,
+  computedBy: [32m&apos;hf-3.1.0&apos;[39m,
+  t: [32m&apos;e&apos;[39m,
+  error: [32m&apos;#NAME?&apos;[39m
+}
+[TEST 10] A3 computed: {
+  v: [32m&apos;#ERROR!&apos;[39m,
+  ts: [32m&apos;2025-10-17T14:48:31.992Z&apos;[39m,
+  hfVersion: [32m&apos;3.1.0&apos;[39m,
+  computedBy: [32m&apos;hf-3.1.0&apos;[39m,
+  t: [32m&apos;e&apos;[39m,
+  error: [32m&apos;#ERROR!&apos;[39m
+}
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.array-and-namedrange.test.ts" timestamp="2025-10-17T14:49:17.697Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.7178932">
+        <testcase classname="src/lib/workbook/roundtrip.array-and-namedrange.test.ts" name="roundtrip preserves arrayRange and hidden named ranges via SheetJS" time="0.7138314">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.comprehensive.test.ts" timestamp="2025-10-17T14:49:17.697Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.4065897">
+        <testcase classname="src/lib/workbook/roundtrip.comprehensive.test.ts" name="Comprehensive roundtrip import/export &gt; preserves named ranges, freeze panes, column/row sizes, hyperlinks, autofilter and formulas" time="0.4035374">
+            <system-err>
+[SheetJSAdapter] Export warnings:
+Sheet &quot;Sheet1&quot;, Cell B1: Formula &quot;=SUM(MyRange)&quot; missing computed value (computed.v). Excel will recalculate on open. Run recomputeAndPatchCache() before export.
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.datesystem.test.ts" timestamp="2025-10-17T14:49:17.699Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.383673">
+        <testcase classname="src/lib/workbook/roundtrip.datesystem.test.ts" name="Date System Roundtrip &gt; preserves date1904 system via SheetJS" time="0.3810754">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.formatting.test.ts" timestamp="2025-10-17T14:49:17.700Z" hostname="LAPTOP-VN9VADIP" tests="23" failures="0" errors="0" skipped="0" time="1.6900921">
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Workbook Properties &gt; initialization" time="0.0030829">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Workbook Properties &gt; clone preserves properties" time="0.0007048">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Workbook Properties &gt; modification" time="0.0004617">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Workbook Properties &gt; works with multiple sheets" time="0.0007426">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Workbook Properties &gt; serialization" time="0.00042">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="HyperFormula Hydration &gt; Single Sheet Hydration" time="0.1557094">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="HyperFormula Hydration &gt; Multiple Sheet Hydration" time="0.0719012">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="HyperFormula Hydration &gt; Empty Workbook Hydration should throw" time="0.0089181">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="HyperFormula Hydration &gt; Hydration with Cells and Formulas" time="0.1110424">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="HyperFormula Hydration &gt; Special Characters in Sheet Names" time="0.1238435">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve date formats (mm/dd/yyyy)" time="0.9448493">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve date-time formats (mm/dd/yyyy hh:mm)" time="0.036986">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve percentage formats (0.00%)" time="0.0102047">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve percentage formats (0%)" time="0.0327974">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve currency formats ($#,##0.00)" time="0.0408223">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve accounting formats (_($* #,##0.00_))" time="0.0077581">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve custom number formats (#,##0.00)" time="0.0343001">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve scientific notation formats (0.00E+00)" time="0.0110677">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve fraction formats (# ?/?)" time="0.0192557">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve text format (@)" time="0.0301876">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve formats with computed values (formulas)" time="0.0272484">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should handle cells without numFmt (default general format)" time="0.0076065">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.formatting.test.ts" name="Round-Trip: Number Format Preservation &gt; should preserve multiple formats in same sheet" time="0.0067343">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.full.test.ts" timestamp="2025-10-17T14:49:17.711Z" hostname="LAPTOP-VN9VADIP" tests="14" failures="0" errors="0" skipped="0" time="0.8542695">
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Workbook Properties &gt; initialization" time="0.0035088">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Workbook Properties &gt; clone preserves properties" time="0.0007779">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Workbook Properties &gt; modification" time="0.0005039">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Workbook Properties &gt; works with multiple sheets" time="0.0006615">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Workbook Properties &gt; serialization" time="0.000497">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="HyperFormula Hydration &gt; Single Sheet Hydration" time="0.1030681">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="HyperFormula Hydration &gt; Multiple Sheet Hydration" time="0.0941844">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="HyperFormula Hydration &gt; Empty Workbook Hydration should throw" time="0.0015012">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="HyperFormula Hydration &gt; Hydration with Cells and Formulas" time="0.0687943">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="HyperFormula Hydration &gt; Special Characters in Sheet Names" time="0.0312764">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Round-Trip: Full Integration (Formats + Formulas + Layout + HF) &gt; should preserve formats + formulas + layout after export/import/recompute" time="0.3988175">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Round-Trip: Full Integration (Formats + Formulas + Layout + HF) &gt; should handle date formulas with date formats" time="0.0507733">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Round-Trip: Full Integration (Formats + Formulas + Layout + HF) &gt; should handle percentage formulas with percentage formats" time="0.0484545">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.full.test.ts" name="Round-Trip: Full Integration (Formats + Formulas + Layout + HF) &gt; should preserve everything after multiple export/import cycles" time="0.0476846">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.layout.test.ts" timestamp="2025-10-17T14:49:17.716Z" hostname="LAPTOP-VN9VADIP" tests="22" failures="0" errors="0" skipped="0" time="0.825747">
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Workbook Properties &gt; initialization" time="0.0046261">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Workbook Properties &gt; clone preserves properties" time="0.0008247">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Workbook Properties &gt; modification" time="0.0006032">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Workbook Properties &gt; works with multiple sheets" time="0.0006776">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Workbook Properties &gt; serialization" time="0.0005193">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="HyperFormula Hydration &gt; Single Sheet Hydration" time="0.1580761">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="HyperFormula Hydration &gt; Multiple Sheet Hydration" time="0.0493689">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="HyperFormula Hydration &gt; Empty Workbook Hydration should throw" time="0.0016723">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="HyperFormula Hydration &gt; Hydration with Cells and Formulas" time="0.0394584">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="HyperFormula Hydration &gt; Special Characters in Sheet Names" time="0.0678974">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve column widths" time="0.3812844">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve row heights" time="0.0167828">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve hidden columns" time="0.0088636">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve hidden rows" time="0.0094563">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve default column width (note: SheetJS limited support)" time="0.0073844">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve default row height (note: SheetJS limited support)" time="0.008158">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should handle mixed column widths (sparse)" time="0.0081134">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should handle mixed row heights (sparse)" time="0.0089504">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve layout with merged cells" time="0.0087987">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should preserve layout with formulas" time="0.0094042">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should handle very wide columns (stress test)" time="0.0236513">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.layout.test.ts" name="Round-Trip: Layout Preservation &gt; should handle very tall rows (stress test)" time="0.0072577">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/roundtrip.test.ts" timestamp="2025-10-17T14:49:17.726Z" hostname="LAPTOP-VN9VADIP" tests="10" failures="0" errors="0" skipped="0" time="0.3299996">
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="Workbook Properties &gt; initialization" time="0.0040027">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="Workbook Properties &gt; clone preserves properties" time="0.000942">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="Workbook Properties &gt; modification" time="0.0007183">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="Workbook Properties &gt; works with multiple sheets" time="0.0021344">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="Workbook Properties &gt; serialization" time="0.0009243">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="HyperFormula Hydration &gt; Single Sheet Hydration" time="0.145131">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="HyperFormula Hydration &gt; Multiple Sheet Hydration" time="0.0481309">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="HyperFormula Hydration &gt; Empty Workbook Hydration should throw" time="0.0081662">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="HyperFormula Hydration &gt; Hydration with Cells and Formulas" time="0.050127">
+        </testcase>
+        <testcase classname="src/lib/workbook/roundtrip.test.ts" name="HyperFormula Hydration &gt; Special Characters in Sheet Names" time="0.0657024">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/simulateApply.edgecases.test.ts" timestamp="2025-10-17T14:49:17.729Z" hostname="LAPTOP-VN9VADIP" tests="2" failures="0" errors="0" skipped="0" time="0.2388693">
+        <testcase classname="src/lib/workbook/simulateApply.edgecases.test.ts" name="simulateApply provenance edge cases &gt; includes spilled-array formula provenance (array-spill)" time="0.17551">
+        </testcase>
+        <testcase classname="src/lib/workbook/simulateApply.edgecases.test.ts" name="simulateApply provenance edge cases &gt; includes provenance for cross-sheet structural ops (insertRow affecting formulas in other sheets)" time="0.0603529">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/simulateApply.test.ts" timestamp="2025-10-17T14:49:17.730Z" hostname="LAPTOP-VN9VADIP" tests="5" failures="0" errors="0" skipped="0" time="0.3487133">
+        <testcase classname="src/lib/workbook/simulateApply.test.ts" name="simulateApply dry-run &gt; does not mutate original workbook and returns a diff" time="0.1661">
+        </testcase>
+        <testcase classname="src/lib/workbook/simulateApply.test.ts" name="simulateApply dry-run &gt; is deterministic across repeated runs" time="0.0879493">
+        </testcase>
+        <testcase classname="src/lib/workbook/simulateApply.test.ts" name="simulateApply dry-run &gt; computes precise structural diffs for insertRow/deleteRow" time="0.0341045">
+        </testcase>
+        <testcase classname="src/lib/workbook/simulateApply.test.ts" name="simulateApply dry-run &gt; computes precise structural diffs for insertCol/deleteCol" time="0.0314817">
+        </testcase>
+        <testcase classname="src/lib/workbook/simulateApply.test.ts" name="simulateApply dry-run &gt; includes merge and addSheet structural ops and tags computedBy with planId" time="0.0260525">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/validator.test.ts" timestamp="2025-10-17T14:49:17.732Z" hostname="LAPTOP-VN9VADIP" tests="3" failures="0" errors="0" skipped="0" time="0.3914205">
+        <testcase classname="src/lib/workbook/validator.test.ts" name="Workbook Validator &gt; should validate correct workbook" time="0.3853895">
+            <system-err>
+strict mode: use allowUnionTypes to allow union type keyword at &quot;https://nexcell.dev/workbook-json-schema-v1.0.json#/properties/raw&quot; (strictTypes)
+strict mode: use allowUnionTypes to allow union type keyword at &quot;https://nexcell.dev/workbook-json-schema-v1.0.json#/definitions/ComputedValue/properties/v&quot; (strictTypes)
+strict mode: use allowUnionTypes to allow union type keyword at &quot;https://nexcell.dev/workbook-json-schema-v1.0.json#/definitions/ComputedValue/properties/v&quot; (strictTypes)
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/lib/workbook/validator.test.ts" name="Workbook Validator &gt; should reject invalid workbook" time="0.0022008">
+        </testcase>
+        <testcase classname="src/lib/workbook/validator.test.ts" name="Workbook Validator &gt; should reject workbook without required fields" time="0.0007384">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/workbook-properties.test.ts" timestamp="2025-10-17T14:49:17.734Z" hostname="LAPTOP-VN9VADIP" tests="5" failures="0" errors="0" skipped="0" time="0.010223">
+        <testcase classname="src/lib/workbook/workbook-properties.test.ts" name="Workbook Properties &gt; initialization" time="0.0038918">
+        </testcase>
+        <testcase classname="src/lib/workbook/workbook-properties.test.ts" name="Workbook Properties &gt; clone preserves properties" time="0.0009137">
+        </testcase>
+        <testcase classname="src/lib/workbook/workbook-properties.test.ts" name="Workbook Properties &gt; modification" time="0.0006955">
+        </testcase>
+        <testcase classname="src/lib/workbook/workbook-properties.test.ts" name="Workbook Properties &gt; works with multiple sheets" time="0.0008485">
+        </testcase>
+        <testcase classname="src/lib/workbook/workbook-properties.test.ts" name="Workbook Properties &gt; serialization" time="0.0006324">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/ai/__tests__/PlanPreview.test.tsx" timestamp="2025-10-17T14:49:17.739Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.2695973">
+        <testcase classname="src/components/ai/__tests__/PlanPreview.test.tsx" name="PlanPreview &gt; renders changes, warnings, reasoning and calls callbacks" time="0.2668018">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/lib/workbook/adapters/sheetjs.namedranges.test.ts" timestamp="2025-10-17T14:49:17.742Z" hostname="LAPTOP-VN9VADIP" tests="1" failures="0" errors="0" skipped="0" time="0.3881876">
+        <testcase classname="src/lib/workbook/adapters/sheetjs.namedranges.test.ts" name="SheetJS Adapter export mappings &gt; exports named ranges, freeze panes, column/row sizes, hyperlinks, and autofilter" time="0.3849603">
+        </testcase>
+    </testsuite>
+</testsuites>

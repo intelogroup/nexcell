@@ -367,6 +367,255 @@ export function disposeFormulaEngine(
   hf.disposeHF(hydration.hf);
 }
 
+/**
+ * Simulate applying operations to a workbook without mutating the original.
+ *
+ * Steps:
+ * 1. Clone the workbook
+ * 2. Apply operations to the clone (skip recompute during apply)
+ * 3. Force a fresh HF hydration and recompute on the clone
+ * 4. Return a deterministic diff describing changes
+ *
+ * @param workbook - Source workbook (not mutated)
+ * @param operations - Operations to apply in the dry-run
+ * @param options - Simulation options (planId, user, forceNewHydration)
+ */
+export async function simulateApply(
+  workbook: WorkbookJSON,
+  operations: AnyOperation[],
+  options?: { planId?: string; user?: string; forceNewHydration?: boolean }
+): Promise<{ success: boolean; error?: string; actualDiff?: any; hydration?: HydrationResult; recompute?: any }> {
+  try {
+    // 1. Clone workbook for immutable simulation
+    const before = cloneWorkbook(workbook);
+    const after = cloneWorkbook(workbook);
+
+    // 2. Apply ops to the clone (skip recompute for performance and determinism)
+    const applyResult = ops.applyOperations(after, operations, { skipRecompute: true, user: options?.user });
+
+    if (!applyResult.success) {
+      return { success: false, error: `Apply failed: ${applyResult.errors.join('; ') || 'unknown'}` };
+    }
+
+    // Ensure modifiedAt is bumped so hydration cache won't be reused accidentally
+    after.meta = after.meta || { createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() };
+    after.meta.modifiedAt = new Date().toISOString();
+
+    // 3. Force fresh hydration & recompute on the clone
+    const { hydration, recompute } = hf.computeWorkbook(after, { forceNewHydration: options?.forceNewHydration ?? true });
+
+    // If a planId is provided, tag recomputed values for provenance
+    if (options?.planId) {
+      const tag = `simulate-${options.planId}`;
+      if (after.computed && after.computed.hfCache) {
+        for (const addr of Object.keys(after.computed.hfCache)) {
+          const cv = (after.computed.hfCache as Record<string, any>)[addr];
+          if (cv && typeof cv === 'object') {
+            cv.computedBy = tag;
+          }
+        }
+      }
+
+      // Also tag per-cell computed metadata stored on the sheet cells
+      for (const sheet of after.sheets) {
+        for (const addr of Object.keys(sheet.cells || {})) {
+          const cell = (sheet.cells as Record<string, any>)[addr];
+          if (cell.computed && typeof cell.computed === 'object') {
+            cell.computed.computedBy = tag;
+          }
+        }
+      }
+    }
+
+    // Ensure per-sheet cells reflect hfCache entries so diffs include computed metadata
+    // (some computed values are stored only in workbook.computed.hfCache; copy them
+    // onto the corresponding sheet cell.computed when missing)
+    if (after.computed && after.computed.hfCache) {
+      for (const fullAddr of Object.keys(after.computed.hfCache)) {
+        try {
+          const cv = (after.computed.hfCache as Record<string, any>)[fullAddr];
+          const parts = String(fullAddr).split('!');
+          if (parts.length !== 2) continue;
+          const sheetName = parts[0];
+          const addr = parts[1];
+          const sheet = after.sheets.find((s) => s.name === sheetName);
+          if (!sheet) continue;
+          sheet.cells = sheet.cells || {};
+          const cell = sheet.cells[addr];
+          if (!cell) continue;
+          if (!cell.computed) {
+            // Attach a shallow copy to avoid accidental mutations
+            sheet.cells[addr] = { ...cell, computed: { ...cv } };
+          }
+        } catch (e) {
+          // ignore malformed addresses
+        }
+      }
+    }
+
+    // 4. Build diffs between 'before' and 'after'
+    const cellChanges: Array<any> = [];
+    const formulaChanges: Array<any> = [];
+    const structuralChanges: Array<any> = [];
+
+    // Map sheets by id for easy lookup
+    const beforeSheets = new Map(before.sheets.map((s) => [s.id, s]));
+    const afterSheets = new Map(after.sheets.map((s) => [s.id, s]));
+
+    // Structural changes: detect row/col inserts/deletes and compute movedCells mapping
+    for (const op of operations) {
+      if (op.type === 'insertRow' || op.type === 'deleteRow') {
+        const o = op as any;
+        const sheet = after.sheets.find(s => s.id === o.sheetId);
+        if (!sheet) continue;
+
+        const affected: { movedCells: Array<{ from: string; to: string }>; insertedRows?: number; deletedRows?: number } = { movedCells: [] };
+
+        const count = o.count || 1;
+        const rowIndex = o.row; // 1-based
+
+        const beforeCells = (before.sheets.find(s => s.id === o.sheetId)?.cells) || {};
+  // Build mapping of moved cells for insertRow (cells at or below rowIndex move down)
+        if (op.type === 'insertRow') {
+          affected.insertedRows = count;
+          for (const [addr] of Object.entries(beforeCells)) {
+            const parsed = parseAddress(addr);
+            if (parsed.row >= rowIndex) {
+              const newAddr = toAddress(parsed.row + count, parsed.col);
+              affected.movedCells.push({ from: addr, to: newAddr });
+            }
+          }
+        } else {
+          // deleteRow: cells below deleted range move up
+          affected.deletedRows = count;
+          for (const [addr] of Object.entries(beforeCells)) {
+            const parsed = parseAddress(addr);
+            if (parsed.row > rowIndex + count - 1) {
+              const newAddr = toAddress(parsed.row - count, parsed.col);
+              affected.movedCells.push({ from: addr, to: newAddr });
+            }
+          }
+        }
+
+        structuralChanges.push({ type: op.type, sheetId: o.sheetId, details: affected });
+      } else if (op.type === 'insertCol' || op.type === 'deleteCol') {
+        const o = op as any;
+        const sheet = after.sheets.find(s => s.id === o.sheetId);
+        if (!sheet) continue;
+
+        const affected: { movedCells: Array<{ from: string; to: string }>; insertedCols?: number; deletedCols?: number } = { movedCells: [] };
+
+        const count = o.count || 1;
+        const colIndex = o.col; // 1-based
+
+        const beforeCells = (before.sheets.find(s => s.id === o.sheetId)?.cells) || {};
+
+        if (op.type === 'insertCol') {
+          affected.insertedCols = count;
+          for (const [addr] of Object.entries(beforeCells)) {
+            const parsed = parseAddress(addr);
+            if (parsed.col >= colIndex) {
+              const newAddr = toAddress(parsed.row, parsed.col + count);
+              affected.movedCells.push({ from: addr, to: newAddr });
+            }
+          }
+        } else {
+          affected.deletedCols = count;
+          for (const [addr] of Object.entries(beforeCells)) {
+            const parsed = parseAddress(addr);
+            if (parsed.col > colIndex + count - 1) {
+              const newAddr = toAddress(parsed.row, parsed.col - count);
+              affected.movedCells.push({ from: addr, to: newAddr });
+            }
+          }
+        }
+
+        structuralChanges.push({ type: op.type, sheetId: o.sheetId, details: affected });
+      } else if (['merge', 'unmerge', 'addSheet', 'deleteSheet'].includes(op.type)) {
+        structuralChanges.push({ type: op.type, sheetId: (op as any).sheetId || null, details: op });
+      }
+    }
+
+    // Helper to sanitize cell objects for deterministic diffs
+    function sanitizeCellForDiff(cell: any) {
+      if (!cell) return cell;
+      const c = JSON.parse(JSON.stringify(cell));
+      if (c.computed && typeof c.computed === 'object') {
+        // Remove transient timestamp to keep diffs deterministic
+        delete c.computed.ts;
+      }
+      return c;
+    }
+
+    // Compare cell-level changes per sheet
+    for (const [sheetId, afterSheet] of afterSheets.entries()) {
+      const beforeSheet = beforeSheets.get(sheetId);
+      const beforeCells = (beforeSheet && beforeSheet.cells) || {};
+      const afterCells = afterSheet.cells || {};
+
+      // Union of addresses
+      const addresses = new Set<string>([...Object.keys(beforeCells), ...Object.keys(afterCells)]);
+
+      for (const addr of addresses) {
+        const b = sanitizeCellForDiff(beforeCells[addr]);
+        const a = sanitizeCellForDiff(afterCells[addr]);
+        if (JSON.stringify(b) !== JSON.stringify(a)) {
+          cellChanges.push({ sheetId, address: addr, before: b, after: a });
+          if ((b && b.formula) !== (a && a.formula)) {
+            formulaChanges.push({ sheetId, address: addr, before: b?.formula || '', after: a?.formula || '' });
+          }
+        }
+      }
+    }
+
+    const actualDiff: any = {
+      cellChanges,
+      formulaChanges,
+      structuralChanges,
+      totalAffectedCells: cellChanges.length,
+    };
+
+    // Build a provenance map when a planId is provided. This avoids mutating
+    // per-cell computed metadata as a fallback and provides callers a single
+    // place to look for provenance information produced by the simulation.
+    if (options?.planId) {
+      const computedProvenance: Record<string, string> = {};
+      const tag = `simulate-${options.planId}`;
+
+      if (after.computed && after.computed.hfCache) {
+        for (const [fullAddr, cv] of Object.entries(after.computed.hfCache)) {
+          try {
+            const prov = (cv && (cv as any).computedBy) || tag;
+            computedProvenance[fullAddr] = prov;
+          } catch (e) {
+            // ignore malformed entries
+          }
+        }
+      }
+
+      // Ensure any changed cells are included in the provenance map
+      for (const cc of actualDiff.cellChanges) {
+        try {
+          const sheet = after.sheets.find(s => s.id === cc.sheetId);
+          if (!sheet) continue;
+          const fullAddr = `${sheet.name}!${cc.address}`;
+          if (!(fullAddr in computedProvenance)) {
+            computedProvenance[fullAddr] = tag;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      actualDiff.computedProvenance = computedProvenance;
+    }
+
+    return { success: true, actualDiff, hydration, recompute };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
 // ============================================================================
 // Validation & Utilities
 // ============================================================================
@@ -427,6 +676,112 @@ export function getStats(workbook: WorkbookJSON): ReturnType<typeof utils.getWor
  */
 export function getActionHistory(workbook: WorkbookJSON): Action[] {
   return workbook.actionLog || [];
+}
+
+// ============================================================================
+// Named Ranges Helpers
+// ============================================================================
+
+/**
+ * Add or update a workbook-scoped named range.
+ *
+ * - If `scope` is omitted or `"workbook"`, the named range is stored at workbook level.
+ * - If `scope` is a sheet id, the named range is stored on that sheet's `namedRanges` map.
+ */
+export function addNamedRange(
+  workbook: WorkbookJSON,
+  name: string,
+  ref: string,
+  scope: "workbook" | string = "workbook",
+  comment?: string
+): void {
+  if (!workbook) throw new Error('addNamedRange: workbook is required');
+
+  // Create top-level map if missing
+  if (!workbook.namedRanges) workbook.namedRanges = {};
+
+  if (!scope || scope === "workbook") {
+    workbook.namedRanges[name] = ref;
+  } else {
+    // sheet-scoped - find sheet by id
+    const sheet = workbook.sheets?.find((s) => s.id === scope);
+    if (!sheet) throw new Error(`addNamedRange: sheet with id ${scope} not found`);
+    if (!sheet.namedRanges) sheet.namedRanges = {};
+    sheet.namedRanges[name] = ref;
+  }
+  // keep parameter to preserve API; avoid unused param lint
+  void comment;
+}
+
+/**
+ * Remove a named range. If scope is provided, remove from that scope, otherwise try workbook scope first then sheets.
+ */
+export function removeNamedRange(
+  workbook: WorkbookJSON,
+  name: string,
+  scope?: "workbook" | string
+): boolean {
+  if (!workbook) return false;
+
+  if (scope === undefined || scope === "workbook") {
+    if (workbook.namedRanges && name in workbook.namedRanges) {
+      delete workbook.namedRanges[name];
+      return true;
+    }
+    // try sheets if not found at workbook level and scope wasn't strictly workbook
+    for (const sheet of workbook.sheets || []) {
+      if (sheet.namedRanges && name in sheet.namedRanges) {
+        delete sheet.namedRanges[name];
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // scoped to a particular sheet id
+  const sheet = workbook.sheets?.find((s) => s.id === scope);
+  if (!sheet || !sheet.namedRanges) return false;
+  if (name in sheet.namedRanges) {
+    delete sheet.namedRanges[name];
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Get a named range by name. Returns either a workbook-scoped or sheet-scoped value, preferring workbook scope.
+ */
+export function getNamedRange(
+  workbook: WorkbookJSON,
+  name: string
+): string | undefined {
+  if (!workbook) return undefined;
+  if (workbook.namedRanges && name in workbook.namedRanges) return workbook.namedRanges[name] as string;
+  for (const sheet of workbook.sheets || []) {
+    if (sheet.namedRanges && name in sheet.namedRanges) return sheet.namedRanges[name] as string;
+  }
+  return undefined;
+}
+
+/**
+ * List all named ranges in the workbook (both workbook- and sheet-scoped).
+ */
+export function listNamedRanges(workbook: WorkbookJSON): Array<{ name: string; ref: string; scope: "workbook" | string }> {
+  const out: Array<{ name: string; ref: string; scope: "workbook" | string }> = [];
+  if (!workbook) return out;
+  if (workbook.namedRanges) {
+    for (const [k, v] of Object.entries(workbook.namedRanges)) {
+      out.push({ name: k, ref: String(v), scope: "workbook" });
+    }
+  }
+  for (const sheet of workbook.sheets || []) {
+    if (sheet.namedRanges) {
+      for (const [k, v] of Object.entries(sheet.namedRanges)) {
+        out.push({ name: k, ref: String(v), scope: sheet.id });
+      }
+    }
+  }
+  return out;
 }
 
 // ============================================================================

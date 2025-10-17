@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
+import PlanPreview from '../ai/PlanPreview';
+import type { AIPlan } from '../../lib/ai/planTypes';
 import { Send } from 'lucide-react';
 import { type Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -21,6 +23,16 @@ export function ChatInterface({ messages, onSendMessage, isLoading }: ChatInterf
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
+      // If user requests a plan preview (prefix `/plan `) use a mock generator
+      if (input.trim().startsWith('/plan ')) {
+        const intent = input.trim().substring(6).trim();
+        const mockPlan = generateAIPlanMock(intent);
+        setPreviewPlan(mockPlan);
+        setInput('');
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+        return;
+      }
+
       onSendMessage(input.trim());
       setInput('');
       if (textareaRef.current) {
@@ -106,6 +118,40 @@ export function ChatInterface({ messages, onSendMessage, isLoading }: ChatInterf
           Press Enter to send, Shift+Enter for new line
         </p>
       </div>
+
+      {/* Plan preview modal (mock) */}
+      {previewPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl">
+            <PlanPreview
+              plan={previewPlan}
+              onApprove={() => {
+                // For mock, simply send an assistant message that plan was applied
+                onSendMessage(`(Plan applied) ${previewPlan.planId}`);
+                setPreviewPlan(null);
+              }}
+              onReject={() => {
+                onSendMessage(`(Plan rejected) ${previewPlan.planId}`);
+                setPreviewPlan(null);
+              }}
+              onClose={() => setPreviewPlan(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// Simple mock plan generator for local testing
+function generateAIPlanMock(intent: string): AIPlan {
+  return {
+    planId: `mock-${Date.now()}`,
+    operations: [
+      { type: 'SET_CELL', sheetId: 'Sheet1', address: 'A1', before: 'Old', after: `AI: ${intent}` },
+      { type: 'SET_CELL', sheetId: 'Sheet1', address: 'B1', before: 1, after: 2 },
+    ],
+    reasoning: `This mock plan will set A1 and B1 to satisfy intent: ${intent}`,
+    warnings: intent.toLowerCase().includes('volatile') ? ['Contains volatile functions'] : [],
+  };
 }

@@ -13,6 +13,11 @@
 export type CellDataType = "string" | "number" | "boolean" | "date" | "formula" | "error";
 export type SheetJSType = "n" | "s" | "b" | "e" | "d"; // number, string, bool, error, date
 
+// Column keys are Excel-style letters (A, B, ... AA, AB) used by adapters for mapping to SheetJS '!cols'
+export type ColumnKey = string;
+// Row keys are 1-based row numbers represented as strings to map to SheetJS '!rows'
+export type RowKey = string;
+
 export interface BorderStyle {
   style?: "thin" | "medium" | "thick" | "dashed" | "dotted" | "double";
   color?: string;
@@ -30,6 +35,7 @@ export interface CellStyle {
   alignment?: {
     horizontal?: "left" | "center" | "right" | "justify";
     vertical?: "top" | "middle" | "bottom";
+    // (named ranges are implemented)
     wrapText?: boolean;
     indent?: number;
   };
@@ -42,10 +48,11 @@ export interface CellStyle {
 }
 
 export interface ComputedValue {
-  v: string | number | boolean | null; // computed result
+  v: string | number | boolean | null | Date; // computed result (dates allowed)
   t?: SheetJSType; // SheetJS type hint
   ts: string; // timestamp (ISO)
   hfVersion?: string; // HyperFormula version used
+  stale?: boolean; // true if computed value is stale due to hfVersion mismatch
   computedBy?: string; // "client-uuid" | "server" | "hf-x.y.z"
   error?: string; // error message if formula failed
 }
@@ -73,6 +80,11 @@ export interface Cell {
   numFmt?: string; // number format code: "#,##0.00", "mm/dd/yyyy"
   style?: CellStyle; // visual styling
   hyperlink?: { url: string; tooltip?: string };
+  /**
+   * Rich text runs inside a single cell. Each run can specify its own styling.
+   * This is optional and preserved when exporting to formats that support rich text.
+   */
+  richText?: RichTextRun[];
 
   // Metadata
   notes?: string; // plain note (not rendered as comment)
@@ -84,6 +96,29 @@ export interface Cell {
   conditionalFormatRuleId?: string; // reference to sheet-level rule
   arrayFormula?: boolean; // true if anchor of spilled array
   spilledFrom?: string; // "A1" — if part of spilled range
+  /**
+   * Full spill range for array formulas (stored on the anchor cell).
+   * Example: "A1:C10". Used to block edits on spilled-over cells and
+   * for correct roundtrip export to XLSX.
+   */
+  arrayRange?: string; // "A1:C10" — full spill range (only on anchor cell)
+  /**
+   * Whether the cell is locked for editing when the sheet is protected.
+   */
+  locked?: boolean;
+}
+
+export interface RichTextRun {
+  text: string;
+  style?: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    strikethrough?: boolean;
+    color?: string;
+    fontFamily?: string;
+    fontSize?: number;
+  };
 }
 
 // ============================================================================
@@ -203,6 +238,25 @@ export interface SheetProperties {
   rtl?: boolean; // right-to-left
 }
 
+/**
+ * Freeze panes helper (explicitly stored on sheet for easier export mapping)
+ */
+export interface FreezePanes {
+  row?: number; // number of frozen rows (rows above this index are frozen)
+  col?: number; // number of frozen columns (cols left of this index are frozen)
+}
+
+export interface FilterCriteria {
+  column: string; // e.g. "A"
+  operator: "equals" | "contains" | "greaterThan" | "lessThan" | "in" | "notIn";
+  value?: any;
+}
+
+export interface AutoFilter {
+  range: string; // "A1:D100"
+  filters?: FilterCriteria[];
+}
+
 export interface SheetProtection {
   enabled: boolean;
   passwordHash?: string; // hashed password (server-side verification recommended)
@@ -220,7 +274,11 @@ export interface SheetProtection {
 export interface SheetJSON {
   id: string; // Persistent UUID
   name: string;
-  visible?: boolean; // Default: true
+  /**
+   * Sheet visibility. `visible` is kept for backward compatibility; prefer `visibility`.
+   */
+  visible?: boolean; // Default: true (DEPRECATED: prefer `visibility`)
+  visibility?: "visible" | "hidden" | "veryHidden"; // Excel supports veryHidden
   grid?: { rowCount: number; colCount: number }; // Default: 1000x50
   
   // Cell data (sparse storage - only non-empty cells)
@@ -230,13 +288,26 @@ export interface SheetJSON {
   
   // Core features (MVP)
   mergedRanges?: string[]; // ["A1:B2", "C3:D4"]
-  namedRanges?: Record<string, string>; // Sheet-scoped: { "MyRange": "A1:B10" }
+  /**
+   * Sheet-scoped named ranges. Kept as string for compatibility but may be a richer
+   * NamedRange object for future-proofing.
+   */
+  namedRanges?: Record<string, string | NamedRange>; // Sheet-scoped: { "MyRange": "A1:B10" }
   comments?: Record<string, Comment[]>; // { "A1": [comment1, comment2] }
   
   // Advanced features (MVP - basic support)
   filters?: { range?: string; columns?: Record<number, any> };
   sorts?: Array<{ column: string; ascending: boolean }>;
   dataValidations?: DataValidation[];
+  // Explicit column/row sizing for export parity with Excel
+  // Map keys use column letters for `columnWidths` and 1-based row numbers as strings for `rowHeights`.
+  // These map directly to SheetJS sheet['!cols'] (wch) and sheet['!rows'] (hpx) when exporting.
+  columnWidths?: Record<ColumnKey, number>; // { "A": 120, "B": 80 } in characters (wch)
+  rowHeights?: Record<RowKey, number>; // { "1": 25, "2": 30 } in pixels (hpx)
+
+  // Freeze panes and autofilter
+  freezePanes?: FreezePanes;
+  autoFilter?: AutoFilter;
   
   // Phase 2 features (deferred)
   conditionalFormats?: ConditionalFormat[]; // @experimental
@@ -263,6 +334,12 @@ export interface WorkbookMeta {
   tags?: string[];
   locale?: string; // e.g., "en-US" for date/number formatting
   timezone?: string; // e.g., "America/New_York" for date serialization
+  /**
+   * Excel date system used when exporting/importing workbooks.
+   * "1900" is the default for Windows Excel; "1904" is used by older Mac
+   * workbooks. Affects numeric date serialization.
+   */
+  dateSystem?: "1900" | "1904";
 }
 
 export interface WorkbookProperties {
@@ -278,10 +355,34 @@ export interface WorkbookProperties {
  * Workbook-scoped named ranges and settings
  */
 export interface GlobalSettings {
-  namedRanges?: Record<string, string>; // workbook-scoped: { "TaxRate": "Sheet1!$A$1" }
+  /**
+   * Workbook-scoped named ranges. Keys are the friendly names and values are
+   * either a string formula/ref or a richer NamedRange object.
+   */
+  namedRanges?: Record<string, string | NamedRange>; // workbook-scoped: { "TaxRate": "Sheet1!$A$1" }
   externalLinks?: Array<{ id: string; path: string; type: string }>; // @experimental Phase 2
   scripts?: Array<{ id: string; name: string; code: string }>; // @experimental Phase 2
   theme?: Record<string, any>; // @experimental Phase 2
+}
+
+export type CalculationMode = "auto" | "manual" | "autoNoTable";
+
+export interface NamedRange {
+  name: string;
+  scope?: "workbook" | string; // if string, should be sheet id
+  ref: string; // e.g., "Sheet1!$A$1:$A$10" or a formula like "=Sheet1!$A$1"
+  comment?: string;
+  /**
+   * Whether the named range is hidden from the UI. Excel supports hidden
+   * named ranges which are not shown in the Name Manager.
+   */
+  hidden?: boolean;
+}
+
+export interface ExternalReference {
+  id: string;
+  path: string; // file path or workbook name e.g., "[OtherBook.xlsx]"
+  sheets?: string[]; // referenced sheet names
 }
 
 /**
@@ -299,7 +400,7 @@ export interface ComputedCache {
  */
 export interface Action {
   id: string; // UUID
-  type: "editCell" | "deleteCell" | "insertRow" | "deleteRow" | "insertCol" | "deleteCol" | "merge" | "unmerge" | "setStyle" | "setFormat" | "setRange";
+  type: "editCell" | "deleteCell" | "insertRow" | "deleteRow" | "insertCol" | "deleteCol" | "merge" | "unmerge" | "setStyle" | "setFormat" | "setRange" | "addSheet" | "deleteSheet";
   timestamp: string; // ISO 8601
   user?: string; // User ID or session ID
   sheetId: string; // Which sheet was affected
@@ -327,7 +428,12 @@ export interface WorkbookJSON {
   meta: WorkbookMeta; // Metadata (title, author, timestamps, etc.)
   sheets: SheetJSON[]; // Array of sheets (at least one required)
   workbookProperties?: WorkbookProperties; // Workbook-level settings
-  namedRanges?: Record<string, string>; // Workbook-scoped named ranges (moved from global for clarity)
+  /**
+   * Workbook-level named ranges (rich objects). Keys are the friendly names.
+   */
+  namedRanges?: Record<string, string | NamedRange>;
+  calculationMode?: CalculationMode;
+  externalReferences?: ExternalReference[];
   computed?: ComputedCache; // HyperFormula cache and dependency graph
   actionLog?: Action[]; // Undo/redo stack (simplified from nested ActionLog for easier iteration)
 

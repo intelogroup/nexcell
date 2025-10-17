@@ -16,7 +16,7 @@
 
 import type { WorkbookJSON, Action } from "./workbook/types";
 import { getFeatureFlags } from "./feature-flags";
-import { hydrateHFFromWorkbook, recomputeAndPatchCache } from "./workbook/hyperformula";
+import { simulateApply } from "./workbook/api";
 import { cloneWorkbook } from "./workbook/utils";
 
 export interface SafetyCheckResult {
@@ -75,6 +75,8 @@ export async function runPreApplyChecks(
   const flags = getFeatureFlags();
   const warnings: string[] = [];
   const errors: string[] = [];
+  // Mark userId as used to satisfy strict linting when not needed
+  void userId;
   
   // Check 1: Create backup snapshot
   const snapshot = flags.backupBeforeApply.enabled
@@ -206,70 +208,26 @@ async function runFinalDryRun(
   plan: AIPlan
 ): Promise<{ success: boolean; error?: string; actualDiff?: DryRunDiff }> {
   try {
-    // Clone workbook for dry-run
-    const dryRunWorkbook = cloneWorkbook(workbook);
-    
-    // Apply operations
-    const cellChanges: DryRunDiff['cellChanges'] = [];
-    const formulaChanges: DryRunDiff['formulaChanges'] = [];
-    const structuralChanges: DryRunDiff['structuralChanges'] = [];
-    
-    for (const op of plan.operations) {
-      const sheet = dryRunWorkbook.sheets.find(s => s.id === op.sheetId);
-      if (!sheet) {
-        return { success: false, error: `Sheet ${op.sheetId} not found` };
+    const ops = plan.operations.map(op => {
+      // Map AI plan ops to internal AnyOperation shape where possible
+      if (op.type === 'setCellValue') {
+        return { type: 'editCell', sheetId: op.sheetId, address: op.address, cell: { raw: op.value } } as any;
       }
-      
-      if (op.address) {
-        const before = sheet.cells?.[op.address];
-        
-        // Apply change
-        if (op.type === 'setCellValue') {
-          sheet.cells![op.address] = { raw: op.value, dataType: typeof op.value === 'number' ? 'number' : 'string' };
-        } else if (op.type === 'setCellFormula') {
-          sheet.cells![op.address] = { formula: op.formula, dataType: 'formula' };
-          formulaChanges.push({
-            sheetId: op.sheetId,
-            address: op.address,
-            before: before?.formula || '',
-            after: op.formula!,
-          });
-        }
-        
-        const after = sheet.cells?.[op.address];
-        
-        if (JSON.stringify(before) !== JSON.stringify(after)) {
-          cellChanges.push({
-            sheetId: op.sheetId,
-            address: op.address,
-            before,
-            after,
-          });
-        }
+      if (op.type === 'setCellFormula') {
+        return { type: 'editCell', sheetId: op.sheetId, address: op.address, cell: { formula: op.formula } } as any;
       }
-      
-      // Track structural changes
-      if (['insert-row', 'delete-row', 'insert-col', 'delete-col', 'merge', 'unmerge'].includes(op.type)) {
-        structuralChanges.push({
-          type: op.type as any,
-          sheetId: op.sheetId,
-          details: op,
-        });
-      }
+      // Fallback: pass through structural ops as-is
+      return op as any;
+    });
+
+    const result = await simulateApply(workbook, ops, { forceNewHydration: true });
+
+    if (!result.success) {
+      return { success: false, error: result.error };
     }
-    
-    // Recompute formulas
-    const hydration = hydrateHFFromWorkbook(dryRunWorkbook);
-    recomputeAndPatchCache(dryRunWorkbook, hydration);
-    
-    const actualDiff: DryRunDiff = {
-      cellChanges,
-      formulaChanges,
-      structuralChanges,
-      totalAffectedCells: cellChanges.length,
-    };
-    
-    return { success: true, actualDiff };
+
+    // The simulateApply returns actualDiff compatible with DryRunDiff
+    return { success: true, actualDiff: result.actualDiff };
   } catch (error) {
     return { success: false, error: String(error) };
   }

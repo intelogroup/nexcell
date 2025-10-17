@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { computeWorkbook } from './hyperformula';
-import type { WorkbookJSON } from './types';
+import type { WorkbookJSON, Cell } from './types';
 import { describe, beforeEach, test, expect } from 'vitest';
 
 describe('Accounting workbook fixture', () => {
@@ -16,8 +16,8 @@ describe('Accounting workbook fixture', () => {
   test('trial balance sums match ledger totals and debits equal credits', () => {
     const { hydration, recompute } = computeWorkbook(workbook, { validateFormulas: true });
 
-    // Ensure formulas were computed
-    expect(recompute.errors).toHaveLength(0);
+  // Ensure formulas were computed
+  expect(recompute.errors).toHaveLength(0);
 
     // Read totals from trial balance
     const get = (addr: string) => {
@@ -78,9 +78,10 @@ describe('Accounting workbook fixture', () => {
 
     // Update the workbook JSON: set Ledger!D3 (sheet id 'ledger') to 1000
     const ledgerSheet = workbook.sheets.find(s => s.id === 'ledger');
-  if (!ledgerSheet) throw new Error('Ledger sheet missing');
+    if (!ledgerSheet) throw new Error('Ledger sheet missing');
   if (!ledgerSheet.cells) ledgerSheet.cells = {};
-  ledgerSheet.cells['D3'] = { raw: 1000, dataType: 'number' } as any;
+  // Use a minimal Cell object shape using Partial<Cell>
+  ledgerSheet.cells['D3'] = { raw: 1000, dataType: 'number' } as unknown as Partial<Cell>;
 
     // Recompute from updated workbook
     const recomputed = computeWorkbook(workbook, { forceNewHydration: true });

@@ -15,7 +15,7 @@ import {
 } from './utils';
 import { applyOperations, type EditCellOp, type DeleteCellOp } from './operations';
 import { undo, redo, canUndo, canRedo } from './undo';
-import { hydrateHFFromWorkbook, recomputeAndPatchCache, type HydrationResult } from './hyperformula';
+import { hydrateHFFromWorkbook, recomputeAndPatchCache, type HydrationResult, hydrateHFFromWorkbookPatch } from './hyperformula';
 
 export interface UseWorkbookOptions {
   initialWorkbook?: WorkbookJSON;
@@ -134,19 +134,65 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
   }, [currentSheetId, updateWorkbook]);
 
   // Add new sheet
+  // Centralized action to add a new sheet. This records an inverse action suitable for undo.
   const addNewSheet = useCallback((name?: string): SheetJSON => {
     let newSheet: SheetJSON | undefined;
     updateWorkbook(wb => {
       newSheet = addSheet(wb, name);
+
+      // Update workbookProperties activeTab to the new sheet index
+      if (wb.workbookProperties?.workbookView) {
+        wb.workbookProperties.workbookView.activeTab = wb.sheets.length - 1;
+      }
+
+      // Push minimal inverse action into actionLog for undo (delete the created sheet)
+      try {
+        const inverse = {
+          id: `undo-delete-${newSheet?.id || 'unknown'}`,
+          type: 'deleteSheet',
+          timestamp: new Date().toISOString(),
+          sheetId: newSheet!.id,
+          payload: null,
+          inverse: undefined,
+        } as any;
+        wb.actionLog = wb.actionLog || [];
+        wb.actionLog.push(inverse);
+      } catch (e) {
+        // Non-critical if action log cannot be written
+        console.warn('Failed to push add-sheet inverse action:', e);
+      }
+
       return wb;
     });
+
     if (newSheet) {
       setCurrentSheetId(newSheet.id);
+
+      // Patch HyperFormula instance if present to avoid full rebuild
+      try {
+        if (enableFormulas && hfRef.current && hfRef.current.hf) {
+          const warnings = hydrateHFFromWorkbookPatch(hfRef.current, newSheet);
+          if (warnings && warnings.length > 0) console.warn('HF patch warnings:', warnings);
+        }
+      } catch (err) {
+        console.warn('Error while patching HF for new sheet:', err);
+        // Fallback: mark HF for rebuild on next recompute
+        if (hfRef.current) {
+          try {
+            hfRef.current.hf.destroy();
+          } catch (e) {
+            // swallow
+          }
+          hfRef.current = null;
+        }
+      }
+
       return newSheet;
     }
+
     // Fallback to current sheet
     return currentSheet!;
-  }, [currentSheet, updateWorkbook]);
+  }, [currentSheet, updateWorkbook, enableFormulas]);
 
   // Switch sheet
   const switchSheet = useCallback((sheetId: string) => {

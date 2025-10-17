@@ -23,7 +23,6 @@ import {
   getActionLogStats,
 } from "./index";
 import { createWorkbook, getCell, setCell } from "./utils";
-import type { WorkbookJSON } from "./types";
 
 /**
  * Run all operations tests
