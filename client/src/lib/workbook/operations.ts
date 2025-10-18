@@ -542,10 +542,28 @@ export function applyOperations(
                     hfValue = cell.raw;
                   }
 
-                  console.log(`[HF-ops]   Syncing ${sheet.name}!${address} -> HF (row=${row}, col=${col})`, { hfValue });
+                  console.log(`[HF-ops]   Syncing ${sheet.name}!${address} -> HF (row=${row}, col=${col})`, { 
+                    hfValue,
+                    hfSheetId,
+                    hasHF: !!hydrationToUse.hf,
+                    hfSheetName: hydrationToUse.hf?.getSheetName?.(hfSheetId),
+                    sheetMapSize: hydrationToUse.sheetMap?.size
+                  });
+                  
+                  // Verify HF instance and sheet exist before calling setCellContents
+                  if (!hydrationToUse.hf) {
+                    throw new Error('HyperFormula instance is undefined');
+                  }
+                  if (typeof hfSheetId !== 'number') {
+                    throw new Error(`Invalid hfSheetId: ${hfSheetId}`);
+                  }
+                  if (hydrationToUse.hf.getSheetName(hfSheetId) === undefined) {
+                    throw new Error(`HF sheet ${hfSheetId} does not exist. Available sheets: ${Array.from({ length: hydrationToUse.hf.getSheetsDimensions().length }, (_, i) => `${i}:${hydrationToUse.hf.getSheetName(i)}`).join(', ')}`);
+                  }
+                  
                   hydrationToUse.hf.setCellContents({ sheet: hfSheetId, row, col }, hfValue);
                 } catch (err) {
-                  console.warn(`[HF-ops]   Failed to sync ${address}:`, err);
+                  console.error(`[HF-ops]   Failed to sync ${address}:`, err);
                 }
               }
             }

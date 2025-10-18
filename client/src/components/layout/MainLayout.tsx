@@ -238,6 +238,20 @@ export function MainLayout() {
               logAIInteraction('Error applying operation', { op, error: err });
             }
           });
+          
+          // Debug: Check if formulas have computed values
+          operations.forEach(op => {
+            if (op.cell && 'formula' in op.cell) {
+              const cellData = currentSheet?.cells?.[op.address];
+              console.log(`[AI-Debug] After applying ${op.address}:`, {
+                formula: op.cell.formula,
+                hasComputed: !!cellData?.computed,
+                computedValue: cellData?.computed?.v,
+                raw: cellData?.raw
+              });
+            }
+          });
+          
           logAIInteraction('Workbook after operations', safeStringify(workbook));
           if (!uiChanged) {
             logAIInteraction('UI did not update after AI operations', { operations });
