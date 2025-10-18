@@ -179,8 +179,7 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
         if (enableFormulas && hfRef.current && hfRef.current.hf) {
           const warnings = hydrateHFFromWorkbookPatch(hfRef.current, newSheet);
           if (warnings && warnings.length > 0) console.warn('HF patch warnings:', warnings);
-          // Ensure workbook.hf is up to date with patched hydration
-          try { (workbook as any).hf = hfRef.current; } catch {}
+          // hfRef is the single source of truth - no need to attach to workbook
         }
       } catch (err) {
         console.warn('Error while patching HF for new sheet:', err);
@@ -329,12 +328,12 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
   useEffect(() => {
     if (enableFormulas) {
       try {
-        // Use existing workbook.hf when available
-        if ((workbook as any).hf) {
-          hfRef.current = (workbook as any).hf as HydrationResult;
-        } else {
+        // Create HF instance once on mount
+        // Do NOT read from (workbook as any).hf - it gets lost when workbook is cloned by React
+        // hfRef persists across renders and is the single source of truth
+        if (!hfRef.current) {
+          console.log('[useWorkbook] Creating initial HyperFormula instance');
           hfRef.current = hydrateHFFromWorkbook(workbook);
-          try { (workbook as any).hf = hfRef.current; } catch {}
         }
         recompute();
       } catch (error) {

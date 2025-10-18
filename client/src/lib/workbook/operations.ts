@@ -499,12 +499,9 @@ export function applyOperations(
             sheetMapSize: hydrationToUse?.sheetMap?.size,
             warnings: hydrationToUse?.warnings
           });
-          // Attach runtime hf pointer so callers (useWorkbook) can reuse
-          try {
-            (workbook as any).hf = hydrationToUse;
-          } catch {
-            // ignore assignment failures in read-only contexts
-          }
+          // DO NOT attach HF to workbook object - it gets cloned by React state updates
+          // and the HF instance will be garbage collected, causing "sheetMapping undefined" errors.
+          // The caller (useWorkbook) manages HF lifecycle via hfRef which persists across renders.
         }
 
         if (hydrationToUse) {
