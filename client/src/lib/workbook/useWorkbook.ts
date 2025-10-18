@@ -34,6 +34,7 @@ export interface UseWorkbookReturn {
   setCell: (address: string, cell: Cell) => void;
   getCellValue: (address: string) => Cell | undefined;
   clearCell: (address: string) => void;
+  batchSetCells: (cells: Array<{ address: string; cell: Cell | null }>) => void; // Batch operation
   
   // Sheet management
   addNewSheet: (name?: string) => SheetJSON;
@@ -137,6 +138,36 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
       return wb;
     });
     // Removed microtask recompute - applyOperations already handles it with sync:true
+  }, [currentSheetId, updateWorkbook]);
+
+  // Batch set cells (performance optimization for AI operations)
+  const batchSetCells = useCallback((cells: Array<{ address: string; cell: Cell | null }>) => {
+    if (!currentSheetId || cells.length === 0) return;
+    
+    console.log(`[useWorkbook] Batch setting ${cells.length} cells`);
+    
+    updateWorkbook(wb => {
+      const ops = cells.map(({ address, cell }) => {
+        if (cell === null) {
+          return {
+            type: 'deleteCell' as const,
+            sheetId: currentSheetId,
+            address,
+          };
+        } else {
+          return {
+            type: 'editCell' as const,
+            sheetId: currentSheetId,
+            address,
+            cell,
+          };
+        }
+      });
+      
+      // Apply all operations in a single batch
+      applyOperations(wb, ops, { hydration: hfRef.current || undefined, sync: true });
+      return wb;
+    });
   }, [currentSheetId, updateWorkbook]);
 
   // Add new sheet
@@ -373,6 +404,7 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
     setCell,
     getCellValue,
     clearCell,
+    batchSetCells,
     addNewSheet,
     switchSheet,
     renameSheet,

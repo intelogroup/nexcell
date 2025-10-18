@@ -32,6 +32,7 @@ export function MainLayout() {
     currentSheet,
     setCell,
     clearCell,
+    batchSetCells,
     addNewSheet,
     switchSheet,
     renameSheet,
@@ -220,24 +221,28 @@ export function MainLayout() {
 
         console.log('[AI-Workbook] Converted operations:', operations);
 
-        // Apply operations safely
+        // Apply operations in batch for better performance
           logAIInteraction('Workbook before operations', safeStringify(workbook));
-          let uiChanged = false;
-          operations.forEach(op => {
+          
+          // Batch all operations together to avoid multiple recomputes
+          if (operations.length > 0) {
             try {
-              if (op.cell === null) {
-                logAIInteraction('Clear cell', { address: op.address });
-                clearCell(op.address);
-                uiChanged = true;
-              } else {
-                console.log('[AI-Workbook] Set cell:', { address: op.address, cell: JSON.stringify(op.cell, null, 2) });
-                setCell(op.address, op.cell);
-                uiChanged = true;
-              }
+              console.log(`[AI-Workbook] Applying batch of ${operations.length} operations`);
+              
+              // Convert to batch format
+              const batchCells = operations.map(op => ({
+                address: op.address,
+                cell: op.cell, // Can be null for deletion
+              }));
+              
+              // Apply all at once with a single recompute
+              batchSetCells(batchCells);
+              
+              console.log('[AI-Workbook] Batch operations applied successfully');
             } catch (err) {
-              logAIInteraction('Error applying operation', { op, error: err });
+              logAIInteraction('Error applying batch operations', err);
             }
-          });
+          }
           
           // Debug: Check if formulas have computed values
           operations.forEach(op => {
@@ -253,9 +258,6 @@ export function MainLayout() {
           });
           
           logAIInteraction('Workbook after operations', safeStringify(workbook));
-          if (!uiChanged) {
-            logAIInteraction('UI did not update after AI operations', { operations });
-          }
 
           // Removed setTimeout recompute - operations.ts already handles eager compute with sync:true
 

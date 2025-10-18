@@ -555,7 +555,18 @@ export function applyOperations(
                     throw new Error(`Invalid hfSheetId: ${hfSheetId}`);
                   }
                   if (hydrationToUse.hf.getSheetName(hfSheetId) === undefined) {
-                    throw new Error(`HF sheet ${hfSheetId} does not exist. Available sheets: ${Array.from({ length: hydrationToUse.hf.getSheetsDimensions().length }, (_, i) => `${i}:${hydrationToUse.hf.getSheetName(i)}`).join(', ')}`);
+                    // Get count of sheets properly
+                    const sheetNames: string[] = [];
+                    try {
+                      for (let i = 0; ; i++) {
+                        const name = hydrationToUse.hf.getSheetName(i);
+                        if (name === undefined) break;
+                        sheetNames.push(`${i}:${name}`);
+                      }
+                    } catch (e) {
+                      // Stop iterating
+                    }
+                    throw new Error(`HF sheet ${hfSheetId} does not exist. Available sheets: ${sheetNames.join(', ')}`);
                   }
                   
                   hydrationToUse.hf.setCellContents({ sheet: hfSheetId, row, col }, hfValue);
