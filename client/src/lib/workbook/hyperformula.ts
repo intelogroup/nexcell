@@ -23,7 +23,18 @@ import type {
   SheetJSON,
 } from "./types";
 import { hfToAddress, addressToHf } from "./utils";
-import { trackHFVersionMismatch } from "../telemetry";
+import { trackHFVersionMismatch, trackNamedExpressionFailure } from "../telemetry";
+
+// Re-export utilities for external use
+export { addressToHf, hfToAddress };
+import { 
+  detectCircularReferences, 
+  withComputationTimeout, 
+  createCircularReferenceError,
+  formatCircularReferenceError,
+  DEFAULT_CIRCULAR_CONFIG,
+  type CircularReferenceConfig 
+} from "./circular-reference-guard";
 
 // Extract HyperFormula class from the namespace
 const { HyperFormula } = HyperFormulaNamespace;
@@ -220,6 +231,7 @@ export interface HydrationOptions {
   config?: Partial<ConfigParams>;
   validateFormulas?: boolean; // Default: true
   skipCache?: boolean; // Skip loading cached computed values (default: false)
+  circularReferenceConfig?: Partial<CircularReferenceConfig>; // Circular reference protection settings
 }
 
 /**
@@ -469,10 +481,28 @@ export function hydrateHFFromWorkbook(
               warnings.push(`NamedRange ${name} has no ref; skipping`);
               continue;
             }
+
+            // Heuristic: if the ref includes a sheet-scoped reference like 'Sheet1!A1'
+            // and the referenced sheet name doesn't exist in the workbook, emit
+            // telemetry and skip adding the named expression. HyperFormula may not
+            // throw on registration for such refs, so we proactively detect it.
+            if (typeof ref === 'string' && ref.includes('!')) {
+              const sheetCandidate = ref.split('!')[0].replace(/^'+|'+$/g, '');
+              const found = (workbook.sheets || []).some(s => s.name === sheetCandidate);
+              if (!found) {
+                const errMsg = `Referenced sheet ${sheetCandidate} not found`;
+                warnings.push(`Failed to add named range ${name}: ${errMsg}`);
+                try { trackNamedExpressionFailure(workbook.workbookId || 'unknown', name, String(nr), errMsg); } catch {}
+                continue;
+              }
+            }
+
             const expr = ref.startsWith('=') ? ref : `=${ref}`;
             hf.addNamedExpression(name, expr);
           } catch (err) {
-            warnings.push(`Failed to add named range ${name}: ${err}`);
+            const errMsg = String(err);
+            warnings.push(`Failed to add named range ${name}: ${errMsg}`);
+            try { trackNamedExpressionFailure(workbook.workbookId || 'unknown', name, String(nr), errMsg); } catch {} // best-effort
           }
         }
       }
@@ -486,10 +516,26 @@ export function hydrateHFFromWorkbook(
                 warnings.push(`Sheet-scoped NamedRange ${name} on ${sheet.name} has no ref; skipping`);
                 continue;
               }
+
+              // For sheet-scoped named ranges, also check if the ref references a
+              // sheet that doesn't exist (defensive). If so, emit telemetry.
+              if (typeof ref === 'string' && ref.includes('!')) {
+                const sheetCandidate = ref.split('!')[0].replace(/^'+|'+$/g, '');
+                const found = (workbook.sheets || []).some(s => s.name === sheetCandidate);
+                if (!found) {
+                  const errMsg = `Referenced sheet ${sheetCandidate} not found`;
+                  warnings.push(`Failed to add sheet-scoped named range ${name} on ${sheet.name}: ${errMsg}`);
+                  try { trackNamedExpressionFailure(workbook.workbookId || 'unknown', name, String(nr), errMsg); } catch {}
+                  continue;
+                }
+              }
+
               const expr = ref.startsWith('=') ? ref : `=${ref}`;
               hf.addNamedExpression(name, expr);
             } catch (err) {
-              warnings.push(`Failed to add sheet-scoped named range ${name} on ${sheet.name}: ${err}`);
+              const errMsg = String(err);
+              warnings.push(`Failed to add sheet-scoped named range ${name} on ${sheet.name}: ${errMsg}`);
+              try { trackNamedExpressionFailure(workbook.workbookId || 'unknown', name, String(nr), errMsg); } catch {} // best-effort
             }
           }
         }
@@ -497,6 +543,27 @@ export function hydrateHFFromWorkbook(
     }
   } catch (err) {
     warnings.push(`Failed to register named expressions: ${err}`);
+  }
+
+  // Attach hydration to workbook for reuse by consumers
+  try {
+    // Attach runtime hydration as a non-enumerable property to avoid
+    // leaking HF internals (which contain circular references) into
+    // JSON.stringify() and logs. This keeps the runtime slot available
+    // to in-process consumers while remaining invisible to serialization.
+    Object.defineProperty(workbook, 'hf', {
+      configurable: true,
+      writable: true,
+      enumerable: false,
+      value: {
+        hf,
+        sheetMap,
+        addressMap,
+        warnings,
+      },
+    });
+  } catch {
+    // ignore assignment failures in read-only contexts
   }
 
   return {
@@ -547,6 +614,7 @@ export function recomputeAndPatchCache(
   hydration: HydrationResult,
   _options: RecomputeOptions = {}
 ): RecomputeResult {
+  console.log('[HF-recompute] 🔄 Starting recompute...');
   const { hf, sheetMap } = hydration;
   const warnings: string[] = [];
   const errors: Array<{ address: string; sheetId: string; error: string }> = [];
@@ -563,6 +631,9 @@ export function recomputeAndPatchCache(
   const hfVersion = HyperFormula.version;
   const computedBy = `hf-${hfVersion}`;
   const timestamp = new Date().toISOString();
+  
+  console.log('[HF-recompute] HF version:', hfVersion);
+  console.log('[HF-recompute] Sheet count:', workbook.sheets.length);
 
   // Process all sheets
   for (const sheet of workbook.sheets) {
@@ -572,14 +643,39 @@ export function recomputeAndPatchCache(
       continue;
     }
 
-    // Get sheet dimensions from HF
-    const sheetSize = hf.getSheetDimensions(hfSheetId);
-    const maxRow = sheetSize.height;
-    const maxCol = sheetSize.width;
+    // Get sheet dimensions from HF (defensive: HF instance or mapping may be invalid)
+    let maxRow = 0;
+    let maxCol = 0;
+    try {
+      if (typeof hf.getSheetDimensions !== 'function') {
+        warnings.push(`HF instance does not support getSheetDimensions; skipping sheet ${sheet.name}`);
+        continue;
+      }
+
+      // Defensive: ensure hfSheetId is a valid value
+      if (hfSheetId === undefined || hfSheetId === null) {
+        warnings.push(`HF sheet id missing for sheet ${sheet.name}; skipping`);
+        continue;
+      }
+
+      const sheetSize = hf.getSheetDimensions(hfSheetId);
+      if (!sheetSize || typeof sheetSize.height !== 'number' || typeof sheetSize.width !== 'number') {
+        warnings.push(`HF returned invalid dimensions for sheet ${sheet.name}; skipping`);
+        continue;
+      }
+
+      maxRow = sheetSize.height;
+      maxCol = sheetSize.width;
+    } catch (err) {
+      warnings.push(`Failed to get HF sheet dimensions for ${sheet.name}: ${String(err)}`);
+      continue;
+    }
 
     // Iterate through cells with formulas
     for (const [address, cell] of Object.entries(sheet.cells || {})) {
       if (!cell.formula) continue; // Skip non-formula cells
+
+      console.log(`[HF-recompute] 📊 Processing ${sheet.name}!${address} formula: ${cell.formula}`);
 
       try {
         const { row, col } = addressToHf(address);
@@ -589,6 +685,7 @@ export function recomputeAndPatchCache(
 
         // Get computed value from HF
         const cellValue = hf.getCellValue({ sheet: hfSheetId, row, col });
+        console.log(`[HF-recompute]   └─ HF returned value:`, cellValue, `(type: ${typeof cellValue})`);
 
         // Create computed value object
         const computed: ComputedValue = {
@@ -660,6 +757,8 @@ export function recomputeAndPatchCache(
         } else {
           cell.computed = { ...cell.computed, ...computed, stale: false } as any;
         }
+        
+        console.log(`[HF-recompute]   └─ ✓ Wrote computed:`, { v: computed.v, t: computed.t });
 
         // Update workbook-level cache
         const fullAddress = `${sheet.name}!${address}`;
@@ -723,6 +822,8 @@ export function recomputeAndPatchCache(
   // Update workbook metadata
   workbook.meta.modifiedAt = timestamp;
 
+  console.log(`[HF-recompute] ✅ Recompute complete: ${updatedCells} cells updated, ${errors.length} errors, ${warnings.length} warnings`);
+
   return {
     updatedCells,
     errors,
@@ -747,13 +848,80 @@ export function computeWorkbook(
   hydration: HydrationResult;
   recompute: RecomputeResult;
 } {
-  // Hydrate HF from workbook (reuse cached hydration when possible)
-  const hydration = options.forceNewHydration ? hydrateHFFromWorkbook(workbook, options) : getOrCreateHydration(workbook, options);
+  const circularConfig = { ...DEFAULT_CIRCULAR_CONFIG, ...options.circularReferenceConfig };
+  
+  // Pre-computation circular reference detection
+  if (circularConfig.enablePreDetection) {
+    const circularDetection = detectCircularReferences(workbook, circularConfig);
+    
+    if (circularDetection.hasCircularReferences) {
+      // For MVP, we'll add warnings but allow computation to proceed with timeout protection
+      const warnings: string[] = [];
+      
+      for (const chain of circularDetection.circularChains) {
+        const error = createCircularReferenceError(chain, { operation: 'Formula computation' });
+        warnings.push(formatCircularReferenceError(error));
+        
+        // Log high-severity circular references
+        if (chain.severity === 'high') {
+          console.warn(`🚨 High-severity circular reference detected: ${chain.cells.join(' → ')}`);
+        }
+      }
+      
+      // Add warnings to any existing hydration warnings
+      if (warnings.length > 0) {
+        console.warn(`⚠️ Detected ${circularDetection.circularChains.length} circular reference(s). Computation will proceed with timeout protection.`);
+      }
+    }
+  }
 
-  // Recompute and patch cache
-  const recompute = recomputeAndPatchCache(workbook, hydration, options);
+  // Wrap computation with timeout protection
+  try {
+    const computation = () => {
+      // Hydrate HF from workbook (reuse cached hydration when possible)
+      const hydration = options.forceNewHydration ? hydrateHFFromWorkbook(workbook, options) : getOrCreateHydration(workbook, options);
 
-  return { hydration, recompute };
+      // Recompute and patch cache
+      const recompute = recomputeAndPatchCache(workbook, hydration, options);
+
+      return { hydration, recompute };
+    };
+
+    // Use synchronous timeout wrapper for now (can be made async later if needed).
+    // We disable worker offload for the full computeWorkbook flow because the
+    // computation closure references non-serializable HF instances and many
+    // local functions. Running on the main thread uses a best-effort timing
+    // check while still providing a fallback result on timeout.
+    return withComputationTimeout(
+      computation,
+      circularConfig.computationTimeoutMs,
+      'Formula computation',
+      { useWorker: false, circularDetection: detectCircularReferences(workbook, circularConfig) }
+    ) as { hydration: HydrationResult; recompute: RecomputeResult };
+    
+  } catch (error) {
+    // If computation times out or fails, return safe fallback
+    const fallbackHydration = hydrateHFFromWorkbook(workbook, { ...options, skipCache: true });
+    
+    // Attach fallback hydration to workbook for reuse
+    try {
+      (workbook as any).hf = fallbackHydration;
+    } catch {
+      // ignore assignment failures in read-only contexts
+    }
+    
+    const fallbackRecompute: RecomputeResult = {
+      updatedCells: 0,
+      errors: [{
+        address: 'SYSTEM',
+        sheetId: 'SYSTEM',
+        error: `Computation failed: ${error instanceof Error ? error.message : String(error)}`
+      }],
+      warnings: ['Formula computation was interrupted due to timeout or circular reference. Some formulas may not be computed.']
+    };
+    
+    return { hydration: fallbackHydration, recompute: fallbackRecompute };
+  }
 }
 
 /**
@@ -874,6 +1042,11 @@ export function getCellFormulaFromHF(
 export function formatHFError(error: any): string {
   if (!error || typeof error !== "object") return String(error);
 
+  // Handle circular reference errors
+  if ("type" in error && error.type === "CIRCULAR_REFERENCE") {
+    return formatCircularReferenceError(error);
+  }
+
   if ("type" in error && error.type === "ERROR") {
     const errorValue = error.value || "UNKNOWN_ERROR";
     switch (errorValue) {
@@ -891,6 +1064,8 @@ export function formatHFError(error: any): string {
         return "Invalid cell reference";
       case "#VALUE!":
         return "Invalid value type";
+      case "#CIRCULAR!":
+        return "Circular reference detected";
       default:
         return errorValue;
     }

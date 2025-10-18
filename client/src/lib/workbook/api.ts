@@ -35,15 +35,29 @@ import type { UndoRedoResult } from "./undo";
  * Create a new empty workbook
  * 
  * @param title - Workbook title (default: "Untitled")
+ * @param options - Creation options
  * @returns New workbook with one empty sheet
  * 
  * @example
  * ```typescript
  * const workbook = createWorkbook("My Spreadsheet");
+ * const workbookWithHF = createWorkbook("My Spreadsheet", { enableFormulas: true });
  * ```
  */
-export function createWorkbook(title?: string): WorkbookJSON {
-  return utils.createWorkbook(title);
+export function createWorkbook(title?: string, options?: { enableFormulas?: boolean }): WorkbookJSON {
+  const workbook = utils.createWorkbook(title);
+  
+  // Optionally create and attach HyperFormula instance
+  if (options?.enableFormulas) {
+    const hydration = hf.hydrateHFFromWorkbook(workbook);
+    try {
+      (workbook as any).hf = hydration;
+    } catch {
+      // ignore assignment failures in read-only contexts
+    }
+  }
+  
+  return workbook;
 }
 
 /**
@@ -324,7 +338,14 @@ export function computeFormulas(workbook: WorkbookJSON): {
   hydration: HydrationResult;
   recompute: ReturnType<typeof hf.recomputeAndPatchCache>;
 } {
-  return hf.computeWorkbook(workbook);
+  const { hydration, recompute } = hf.computeWorkbook(workbook);
+  try {
+    // Attach runtime hydration to workbook for reuse by consumers
+    (workbook as any).hf = hydration;
+  } catch {
+    // ignore if assignment fails in some contexts
+  }
+  return { hydration, recompute };
 }
 
 /**
@@ -344,7 +365,13 @@ export function computeFormulas(workbook: WorkbookJSON): {
  * ```
  */
 export function createFormulaEngine(workbook: WorkbookJSON): HydrationResult {
-  return hf.hydrateHFFromWorkbook(workbook);
+  const hydration = hf.hydrateHFFromWorkbook(workbook);
+  try {
+    (workbook as any).hf = hydration;
+  } catch {
+    // ignore
+  }
+  return hydration;
 }
 
 /**

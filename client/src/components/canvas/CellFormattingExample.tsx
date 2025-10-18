@@ -18,7 +18,8 @@ export function CellFormattingExample() {
 
   // Get current cell
   const currentCell = workbook.getCellValue(selectedAddress);
-  const cellValue = currentCell?.raw || currentCell?.computed?.v || '';
+  // Prefer computed value for display; fallback to raw then empty string
+  const cellValue = currentCell?.computed?.v ?? currentCell?.raw ?? '';
   const cellFormula = currentCell?.formula || '';
   const displayValue = cellFormula ? `=${cellFormula}` : String(cellValue);
 

@@ -344,3 +344,21 @@ export function trackHFVersionMismatch(workbookId: string, staleCount: number, c
     },
   });
 }
+
+/**
+ * Track failed registration of a named expression into HyperFormula.
+ * Payload is intentionally light and does not include workbook contents.
+ */
+export function trackNamedExpressionFailure(workbookId: string, name: string, expression: string, errorMsg: string): void {
+  telemetry.track({
+    eventType: 'dry-run-error',
+    timestamp: new Date().toISOString(),
+    workbookId,
+    metadata: {
+      type: 'namedExpression.failure',
+      name,
+      expression,
+      error: String(errorMsg),
+    },
+  });
+}

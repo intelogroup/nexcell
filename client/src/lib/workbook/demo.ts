@@ -10,7 +10,7 @@ import {
   getCell,
   parseAddress,
   toAddress,
-  getWorkbookStats,
+  getStats,
   SheetJSAdapter,
 } from './index';
 
@@ -161,12 +161,12 @@ export async function runDemo() {
 
   // 8. Display stats
   console.log('8️⃣  Workbook statistics:');
-  const stats = getWorkbookStats(wb);
+  const stats = getStats(wb);
   console.log(`   📊 Sheets: ${stats.sheets}`);
   console.log(`   📝 Cells: ${stats.cells}`);
   console.log(`   🧮 Formulas: ${stats.formulas}`);
   console.log(`   🎨 Styled: ${stats.styledCells}`);
-  console.log(`   💾 Size: ${(stats.size / 1024).toFixed(2)} KB\n`);
+  console.log(`   💾 Size: ${(stats.estimatedSize / 1024).toFixed(2)} KB\n`);
 
   // 9. Test address conversions
   console.log('9️⃣  Testing address conversions:');

@@ -72,6 +72,8 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
   
   const [isDirty, setIsDirty] = useState(false);
   const [isComputing, setIsComputing] = useState(false);
+  // Keep a ref to the latest workbook so callbacks (like recompute) don't capture stale closures
+  const workbookRef = useRef<WorkbookJSON>(workbook);
   
   // HyperFormula instance (persistent across renders)
   const hfRef = useRef<HydrationResult | null>(null);
@@ -93,6 +95,8 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
     setWorkbook(prev => {
       const updated = updater(cloneWorkbook(prev));
       updated.meta.modifiedAt = new Date().toISOString();
+      // update ref immediately to keep latest workbook available to async callbacks
+      workbookRef.current = updated;
       return updated;
     });
     setIsDirty(true);
@@ -108,9 +112,10 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
         address,
         cell,
       };
-      applyOperations(wb, [op]);
+      applyOperations(wb, [op], { hydration: hfRef.current || undefined, sync: true });
       return wb;
     });
+    // Removed microtask recompute - applyOperations already handles it with sync:true
   }, [currentSheetId, updateWorkbook]);
 
   // Get cell value
@@ -128,9 +133,10 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
         sheetId: currentSheetId,
         address,
       };
-      applyOperations(wb, [op]);
+      applyOperations(wb, [op], { hydration: hfRef.current || undefined, sync: true });
       return wb;
     });
+    // Removed microtask recompute - applyOperations already handles it with sync:true
   }, [currentSheetId, updateWorkbook]);
 
   // Add new sheet
@@ -173,6 +179,8 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
         if (enableFormulas && hfRef.current && hfRef.current.hf) {
           const warnings = hydrateHFFromWorkbookPatch(hfRef.current, newSheet);
           if (warnings && warnings.length > 0) console.warn('HF patch warnings:', warnings);
+          // Ensure workbook.hf is up to date with patched hydration
+          try { (workbook as any).hf = hfRef.current; } catch {}
         }
       } catch (err) {
         console.warn('Error while patching HF for new sheet:', err);
@@ -266,29 +274,48 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
   // Recompute formulas
   const recompute = useCallback(() => {
     if (!enableFormulas) return;
-    
+
+    const wb = workbookRef.current;
     setIsComputing(true);
     try {
       // Hydrate or reuse HF instance
       if (!hfRef.current) {
-        hfRef.current = hydrateHFFromWorkbook(workbook);
+        // Reuse workbook.hf if present to avoid rehydration
+        if ((wb as any).hf) {
+          hfRef.current = (wb as any).hf as HydrationResult;
+        } else {
+          hfRef.current = hydrateHFFromWorkbook(wb);
+          // Persist hydration onto workbook for other consumers
+          try { (wb as any).hf = hfRef.current; } catch {}
+        }
       }
-      
+
       // Recompute and patch cache
-      const result = recomputeAndPatchCache(workbook, hfRef.current);
-      
+      const result = recomputeAndPatchCache(wb, hfRef.current as HydrationResult);
+
       if (result.errors.length > 0) {
         console.warn('Formula computation errors:', result.errors);
       }
-      
-      // Trigger re-render with updated computed values
-      setWorkbook({ ...workbook });
+        // Debug: surface recompute stats for easier tracing in UI flows
+        try {
+          console.debug('[HF] recompute result', { updatedCells: result.updatedCells, errors: result.errors, warnings: result.warnings });
+        } catch (e) {
+          // swallow
+        }
+
+      // Ensure workbook.hf is up to date with current hydration
+      try { (wb as any).hf = hfRef.current; } catch {}
+
+      // Trigger re-render with updated computed values (use ref value)
+      setWorkbook({ ...wb });
+      // update ref again since we just shallow-copied
+      workbookRef.current = { ...wb } as WorkbookJSON;
     } catch (error) {
       console.error('Formula computation failed:', error);
     } finally {
       setIsComputing(false);
     }
-  }, [workbook, enableFormulas]);
+  }, [enableFormulas]);
 
   // Save workbook
   const save = useCallback(async () => {
@@ -302,7 +329,13 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
   useEffect(() => {
     if (enableFormulas) {
       try {
-        hfRef.current = hydrateHFFromWorkbook(workbook);
+        // Use existing workbook.hf when available
+        if ((workbook as any).hf) {
+          hfRef.current = (workbook as any).hf as HydrationResult;
+        } else {
+          hfRef.current = hydrateHFFromWorkbook(workbook);
+          try { (workbook as any).hf = hfRef.current; } catch {}
+        }
         recompute();
       } catch (error) {
         console.error('Failed to initialize formula engine:', error);
@@ -322,16 +355,7 @@ export function useWorkbook(options: UseWorkbookOptions = {}): UseWorkbookReturn
     };
   }, []); // Only run on mount/unmount
   
-  // Recompute when workbook changes (debounced)
-  useEffect(() => {
-    if (!enableFormulas || !isDirty) return;
-    
-    const timer = setTimeout(() => {
-      recompute();
-    }, 300); // Debounce 300ms
-    
-    return () => clearTimeout(timer);
-  }, [workbook, isDirty, enableFormulas, recompute]);
+  // Removed debounced recompute effect - eager compute in applyOperations handles all formula updates
 
   // Auto-save
   // useEffect(() => {

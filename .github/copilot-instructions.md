@@ -6,4 +6,4 @@
 
 <!-- When committing use jimaklinov@gmail.com as author and org : intelogroup -->
 <!-- Use commit message prefix [GH-Copilot] -->
-<!-- Use commit message suffix [copilot] -->
+<!-- Dont run the full test suite every time. focus on errors or faillures test and codes till success then you may run full suite to see if anything break! -->

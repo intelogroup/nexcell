@@ -15,18 +15,21 @@ export interface AICommand {
  * Parses user chat message and generates workbook actions
  */
 export function parseAICommand(message: string, sheetId: string = 'sheet-1'): AICommand {
-  const lowerMsg = message.toLowerCase().trim();
+  const msg = message.trim();
+  const lowerMsg = msg.toLowerCase();
   
   // Pattern: Set cell A1 to [value]
-  const setCellMatch = lowerMsg.match(/set (?:cell )?([a-z]+\d+) (?:to|=) (.+)/i);
+  const setCellMatch = msg.match(/set (?:cell )?([a-zA-Z]+\d+) (?:to|=) (.+)/i);
   if (setCellMatch) {
     const cellRef = setCellMatch[1].toUpperCase();
-    const value = setCellMatch[2].trim();
+    let value = setCellMatch[2].trim();
     const pos = parseCellReference(cellRef);
     
     if (pos) {
       // Check if it's a formula (starts with =)
       if (value.startsWith('=')) {
+        // Normalize cell references inside the formula to uppercase (e.g., a1 -> A1)
+        value = value.replace(/[A-Za-z]+(?=\d+)/g, s => s.toUpperCase());
         return {
           intent: 'setCellFormula',
           parameters: { cell: cellRef, formula: value },
@@ -59,7 +62,7 @@ export function parseAICommand(message: string, sheetId: string = 'sheet-1'): AI
   }
   
   // Pattern: Add formula [formula] to [cell]
-  const addFormulaMatch = lowerMsg.match(/add formula (.+) (?:to|in) (?:cell )?([a-z]+\d+)/i);
+  const addFormulaMatch = msg.match(/add formula (.+) (?:to|in) (?:cell )?([a-zA-Z]+\d+)/i);
   if (addFormulaMatch) {
     let formula = addFormulaMatch[1].trim();
     const cellRef = addFormulaMatch[2].toUpperCase();
@@ -70,6 +73,8 @@ export function parseAICommand(message: string, sheetId: string = 'sheet-1'): AI
       if (!formula.startsWith('=')) {
         formula = '=' + formula;
       }
+      // Normalize cell refs inside formula
+      formula = formula.replace(/[A-Za-z]+(?=\d+)/g, s => s.toUpperCase());
       
       return {
         intent: 'setCellFormula',
@@ -243,3 +248,90 @@ export const EXAMPLE_COMMANDS = [
   'Clear cell B5',
   'Clear range C1:E5',
 ];
+
+/**
+ * Chat with AI using OpenRouter
+ * @param userMessage - The user's message
+ * @param conversationHistory - Previous conversation context
+ * @param systemPrompt - System instructions for the AI
+ * @returns AI response text
+ */
+export async function chatWithAI(
+  userMessage: string,
+  conversationHistory: Array<{ role: string; content: string }> = [],
+  systemPrompt?: string
+): Promise<string> {
+  // Get API key from environment or localStorage
+  const envKey = import.meta.env?.VITE_OPENROUTER_API_KEY;
+  const storedKey = localStorage.getItem('openrouter_api_key');
+
+  // Compute API key: prefer localStorage override, fall back to environment variable.
+  const apiKey = (storedKey && storedKey !== 'undefined') ? storedKey : ((envKey && envKey !== 'undefined') ? envKey : '');
+
+  // Fail early and clearly if no API key available from either source
+  if (!apiKey || apiKey.trim() === '') {
+    // For tests and runtime we want a clear error message the tests assert on
+    throw new Error('API key not configured');
+  }
+
+  try {
+    // If this is a simple greeting or casual chit-chat, avoid sending the
+    // full production system prompt (which references workbook context) so the
+    // model does not accidentally expose or fabricate workbook data.
+    // Use a minimal, privacy-safe system prompt for short greetings.
+    const isCasualGreeting = (msg: string) => {
+      if (!msg) return false;
+      const trimmed = msg.trim().toLowerCase();
+      // Match plain greetings or very short conversational messages
+      return /^(hi|hello|hey|hiya|yo|how are you|good morning|good afternoon|good evening)[\.!?\s]*$/i.test(trimmed)
+        || trimmed.length <= 4 && /^(hi|hey|yo)$/i.test(trimmed);
+    };
+
+    let systemMessage = systemPrompt;
+    if (isCasualGreeting(userMessage)) {
+      systemMessage = `You are a friendly, conversational assistant. Keep replies short and casual. Do NOT access or invent any workbook or user-specific data. If the user asks about spreadsheet functionality, ask a clarifying question instead.`;
+    }
+
+    const messages = [
+      ...(systemMessage ? [{ role: 'system', content: systemMessage }] : []),
+      ...conversationHistory,
+      { role: 'user', content: userMessage },
+    ];
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'Nexcell',
+      },
+      body: JSON.stringify({
+        model: import.meta.env.VITE_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet',
+        temperature: 0.7,
+        max_tokens: parseInt(import.meta.env.VITE_OPENROUTER_MAX_TOKENS || '2000'),
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error?.message || 
+        `OpenRouter API error: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0]?.message?.content;
+
+    if (!aiResponse) {
+      throw new Error('No response from AI');
+    }
+
+    return aiResponse;
+  } catch (error) {
+    console.error('AI chat error:', error);
+    throw error;
+  }
+}

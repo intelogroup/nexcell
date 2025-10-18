@@ -16,19 +16,15 @@ export function RoundTripTestPage() {
 
     try {
       // Dynamically import the test functions
-      const { 
-        runRoundTripTest, 
-        runExcelJSRoundTripTest 
-      } = await import('@/lib/workbook/roundtrip.test');
-      const { 
-        runWorkbookPropertiesTests 
-      } = await import('@/lib/workbook/workbook-properties.test');
+      const rr = await import('@/lib/workbook/roundtrip.test');
+      const { runRoundTripTest, runExcelJSRoundTripTest } = rr as any;
+      const wp = await import('@/lib/workbook/workbook-properties.test');
+      const { runWorkbookPropertiesTests } = wp as any;
       // const { 
       //   runSheetMetadataTests 
       // } = await import('@/lib/workbook/sheet-metadata.test');
-      const { 
-        runHyperFormulaHydrationTests 
-      } = await import('@/lib/workbook/hyperformula.hydration.test');
+      const hf = await import('@/lib/workbook/hyperformula.hydration.test');
+      const { runHyperFormulaHydrationTests } = hf as any;
 
       // Capture console output
       const logs: string[] = [];
@@ -47,11 +43,11 @@ export function RoundTripTestPage() {
         originalError(...args);
       };
 
-      // Run Workbook Properties test
+  // Run Workbook Properties test
       logs.push('='.repeat(70));
       logs.push('WORKBOOK PROPERTIES TEST');
       logs.push('='.repeat(70));
-      runWorkbookPropertiesTests();
+  if (typeof runWorkbookPropertiesTests === 'function') runWorkbookPropertiesTests();
 
       logs.push('\n\n');
 
@@ -63,11 +59,11 @@ export function RoundTripTestPage() {
 
       logs.push('\n\n');
 
-      // Run HyperFormula Hydration test
+  // Run HyperFormula Hydration test
       logs.push('='.repeat(70));
       logs.push('HYPERFORMULA HYDRATION TEST');
       logs.push('='.repeat(70));
-      runHyperFormulaHydrationTests();
+  if (typeof runHyperFormulaHydrationTests === 'function') await runHyperFormulaHydrationTests();
 
       logs.push('\n\n');
 
@@ -75,7 +71,7 @@ export function RoundTripTestPage() {
       logs.push('='.repeat(70));
       logs.push('SHEETJS ROUND-TRIP TEST');
       logs.push('='.repeat(70));
-      const sheetjsSuccess = await runRoundTripTest();
+  const sheetjsSuccess = typeof runRoundTripTest === 'function' ? await runRoundTripTest() : false;
 
       logs.push('\n\n');
 
@@ -83,7 +79,7 @@ export function RoundTripTestPage() {
       logs.push('='.repeat(70));
       logs.push('EXCELJS ROUND-TRIP TEST');
       logs.push('='.repeat(70));
-      const exceljsSuccess = await runExcelJSRoundTripTest();
+  const exceljsSuccess = typeof runExcelJSRoundTripTest === 'function' ? await runExcelJSRoundTripTest() : false;
 
       // Summary
       logs.push('\n\n');

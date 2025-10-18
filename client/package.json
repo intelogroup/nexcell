@@ -11,11 +11,12 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-  "test:junit": "node -e \"require('fs').mkdirSync('test-results', { recursive: true })\" && vitest run --reporter junit --outputFile test-results/junit.xml",
+    "test:junit": "node -e \"require('fs').mkdirSync('test-results', { recursive: true })\" && vitest run --reporter junit --outputFile test-results/junit.xml",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "validate": "node -e \"import('./src/lib/workbook/validator.ts').then(m => m.runValidatorCLI())\"",
-    "export-check": "echo 'Export validation - TODO: implement'"
+    "export-check": "echo 'Export validation - TODO: implement'",
+    "list-stale-hfversion": "node ./scripts/list-stale-hfversion.js"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.51.0",
@@ -42,6 +43,7 @@
     "@tailwindcss/postcss": "^4.1.14",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",

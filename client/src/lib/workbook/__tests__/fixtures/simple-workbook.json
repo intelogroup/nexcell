@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "workbookId": "fixture-1",
+  "meta": { "title": "Fixture 1", "createdAt": "2025-10-17T00:00:00Z", "modifiedAt": "2025-10-17T00:00:00Z" },
+  "sheets": [
+    {
+      "id": "Sheet1",
+      "name": "Sheet1",
+      "visible": true,
+      "grid": { "rowCount": 10, "colCount": 10 },
+      "cells": {
+        "A1": { "raw": "Hello" },
+        "A2": { "raw": 123 },
+        "B1": { "formula": "=A2+1", "dataType": "formula" }
+      },
+      "mergedRanges": [],
+      "properties": {}
+    }
+  ],
+  "namedRanges": {}
+}

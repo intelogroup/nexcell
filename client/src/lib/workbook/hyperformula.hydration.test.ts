@@ -8,12 +8,11 @@
 import { describe, test, expect } from 'vitest';
 import { createWorkbook, addSheet } from "./utils";
 import { hydrateHFFromWorkbook, disposeHF } from "./hyperformula";
-import type { WorkbookJSON } from "./types";
 
 describe('HyperFormula Hydration', () => {
   test('Single Sheet Hydration', () => {
     const workbook = createWorkbook("Single Sheet Test");
-    const { hf, sheetMap, warnings } = hydrateHFFromWorkbook(workbook);
+    const { hf, sheetMap } = hydrateHFFromWorkbook(workbook);
 
     expect(hf).toBeTruthy();
 
@@ -21,7 +20,7 @@ describe('HyperFormula Hydration', () => {
     expect(sheetNames.length).toBe(1);
     expect(sheetNames[0]).toBe(workbook.sheets[0].name);
 
-    const hfSheetId = sheetMap.get(workbook.sheets[0].id);
+    const hfSheetId = sheetMap.get(workbook.sheets[0].id)!;
     expect(hfSheetId).not.toBeUndefined();
 
     disposeHF(hf);
@@ -35,7 +34,7 @@ describe('HyperFormula Hydration', () => {
     addSheet(workbook, "Second Sheet");
     addSheet(workbook, "Third Sheet");
 
-    const { hf, sheetMap, warnings } = hydrateHFFromWorkbook(workbook);
+    const { hf, sheetMap } = hydrateHFFromWorkbook(workbook);
 
     expect(hf).toBeTruthy();
     const sheetNames = hf.getSheetNames();
@@ -43,7 +42,7 @@ describe('HyperFormula Hydration', () => {
 
     for (let i = 0; i < workbook.sheets.length; i++) {
       expect(sheetNames[i]).toBe(workbook.sheets[i].name);
-      const hfSheetId = sheetMap.get(workbook.sheets[i].id);
+      const hfSheetId = sheetMap.get(workbook.sheets[i].id)!;
       expect(hfSheetId).not.toBeUndefined();
     }
 
@@ -54,7 +53,7 @@ describe('HyperFormula Hydration', () => {
  * Test 3: Hydrate with empty workbook (should throw)
  */
   test('Empty Workbook Hydration should throw', () => {
-    const emptyWorkbook: WorkbookJSON = {
+    const emptyWorkbook: any = {
       version: "1.0.0",
       meta: {
         title: "Empty Workbook",
@@ -91,10 +90,10 @@ describe('HyperFormula Hydration', () => {
       B3: { formula: '=CONCATENATE(B1," ",B2)' },
     };
 
-    const { hf, sheetMap, warnings } = hydrateHFFromWorkbook(workbook);
+    const { hf, sheetMap } = hydrateHFFromWorkbook(workbook);
     expect(hf).toBeTruthy();
 
-    const hfSheetId = sheetMap.get(sheet.id);
+    const hfSheetId = sheetMap.get(sheet.id)!;
     expect(hfSheetId).not.toBeUndefined();
 
     const a1Value = hf.getCellValue({ sheet: hfSheetId, row: 0, col: 0 });
@@ -118,7 +117,7 @@ describe('HyperFormula Hydration', () => {
     addSheet(workbook, "Sheet 3");
     addSheet(workbook, "Sheet's Data");
 
-    const { hf, sheetMap, warnings } = hydrateHFFromWorkbook(workbook);
+    const { hf } = hydrateHFFromWorkbook(workbook);
     expect(hf).toBeTruthy();
 
     const sheetNames = hf.getSheetNames();

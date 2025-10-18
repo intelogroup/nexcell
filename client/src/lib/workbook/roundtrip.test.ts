@@ -1,3 +1,20 @@
+// Vitest wrapper: run a minimal round-trip check so Vitest discovers this legacy harness
+import { describe, it, expect } from 'vitest';
+
+describe('Legacy roundtrip harness', () => {
+  it('performs export/import roundtrip end-to-end', async () => {
+    const wb = createTestWorkbook();
+    const adapter = new SheetJSAdapter();
+    // Use the adapter's async export/import API
+    const buf = await adapter.export(wb as any);
+    const imported = await adapter.import(buf);
+
+    // Basic sanity checks
+    expect(imported.sheets.length).toBeGreaterThan(0);
+    expect(imported.sheets[0].mergedRanges).toEqual(expect.arrayContaining(wb.sheets[0].mergedRanges || []));
+  });
+});
+
 /**
  * Round-Trip Test: SheetJS Export/Import
  * 

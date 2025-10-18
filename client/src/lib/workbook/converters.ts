@@ -39,13 +39,25 @@ export function workbookToCellArray(
         const rowIdx = row - 1; // Convert to 0-based
         const colIdx = col - 1;
         
+        // Log formula cells specifically
+        if (cell.formula) {
+          console.log(`[Converter] ${sheet.name}!${address}: formula="${cell.formula}", computed.v=${cell.computed?.v}, raw=${cell.raw}`);
+        }
+        
+  const rawVal = (cell.computed?.v ?? cell.raw ?? null) as unknown;
+  const value = (typeof rawVal === 'string' && !isNaN(Date.parse(rawVal))) ? new Date(rawVal).toISOString() : (rawVal as string | number | boolean | null);
+        
+        if (cell.formula) {
+          console.log(`[Converter]   └─ Will render value: ${value} (from ${cell.computed?.v !== undefined ? 'computed' : 'raw'})`);
+        }
+        
         result[rowIdx][colIdx] = {
-          value: cell.computed?.v ?? cell.raw ?? null,
+          value,
           formula: cell.formula,
-          formatting: cell.style || cell.numFmt ? {
-            ...cell.style,
-            numberFormat: cell.numFmt,
-          } : undefined,
+          formatting: (cell.style || cell.numFmt) ? {
+              ...cell.style,
+              numberFormat: cell.numFmt,
+            } : undefined,
         };
       }
     } catch (e) {
@@ -99,13 +111,25 @@ export function cellArrayToWorkbook(
             };
           }
         } else {
-          cell.raw = cellData.value;
-          if (typeof cellData.value === 'number') {
-            cell.dataType = 'number';
-          } else if (typeof cellData.value === 'boolean') {
-            cell.dataType = 'boolean';
+          // If value is a Date object or an ISO date string, normalize to ISO string
+          const val = cellData.value;
+          const isDateObj = typeof val === 'object' && val !== null && (val as any).toISOString && typeof (val as any).toISOString === 'function';
+          const isIsoString = typeof val === 'string' && !isNaN(Date.parse(val));
+          if (isDateObj) {
+            cell.raw = (val as any).toISOString();
+            cell.dataType = 'date';
+          } else if (isIsoString) {
+            cell.raw = val as string;
+            cell.dataType = 'date';
           } else {
-            cell.dataType = 'string';
+            cell.raw = cellData.value;
+            if (typeof cellData.value === 'number') {
+              cell.dataType = 'number';
+            } else if (typeof cellData.value === 'boolean') {
+              cell.dataType = 'boolean';
+            } else {
+              cell.dataType = 'string';
+            }
           }
         }
 
@@ -129,8 +153,9 @@ export function cellArrayToWorkbook(
 /**
  * Get cell value for display (respects computed vs raw)
  */
-export function getCellDisplayValue(cell: Cell): string | number | boolean | null {
-  if (cell.formula && cell.computed?.v !== undefined) {
+export function getCellDisplayValue(cell: Cell): string | number | boolean | null | Date {
+  // Prefer computed value when available (computed cache is the authoritative display value).
+  if (cell.computed?.v !== undefined) {
     return cell.computed.v;
   }
   return cell.raw ?? null;

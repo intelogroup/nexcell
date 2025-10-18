@@ -7,9 +7,11 @@ interface FormulaBarProps {
   onCommit: (value: string) => void;
   onCancel: () => void;
   readOnly?: boolean;
+  onFocus?: () => void;
+  onChange?: (value: string) => void;
 }
 
-export function FormulaBar({ value, cellReference, onCommit, onCancel, readOnly }: FormulaBarProps) {
+export function FormulaBar({ value, cellReference, onCommit, onCancel, readOnly, onFocus, onChange }: FormulaBarProps) {
   const [localValue, setLocalValue] = useState(value);
 
   useEffect(() => {
@@ -41,12 +43,18 @@ export function FormulaBar({ value, cellReference, onCommit, onCancel, readOnly 
       <input
         type="text"
         value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
+        onChange={(e) => {
+          setLocalValue(e.target.value);
+          if (onChange) onChange(e.target.value);
+        }}
         onKeyDown={handleKeyDown}
         onBlur={() => {
           if (localValue !== value) {
             onCommit(localValue);
           }
+        }}
+        onFocus={() => {
+          if (onFocus) onFocus();
         }}
         placeholder="Enter value or formula..."
         disabled={readOnly}

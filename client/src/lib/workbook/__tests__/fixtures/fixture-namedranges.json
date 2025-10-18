@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "workbookId": "fixture-named-1",
+  "meta": { "title": "Named Ranges Fixture" },
+  "sheets": [
+    {
+      "id": "Sheet1",
+      "name": "Sheet1",
+      "cells": {
+        "A1": { "raw": 10 },
+        "A2": { "raw": 20 }
+      }
+    }
+  ],
+  "namedRanges": {
+    "Total": "Sheet1!$A$1:$A$2",
+    "SingleA1": { "ref": "Sheet1!$A$1", "hidden": false }
+  }
+}

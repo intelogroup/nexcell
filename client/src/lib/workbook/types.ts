@@ -400,7 +400,7 @@ export interface ComputedCache {
  */
 export interface Action {
   id: string; // UUID
-  type: "editCell" | "deleteCell" | "insertRow" | "deleteRow" | "insertCol" | "deleteCol" | "merge" | "unmerge" | "setStyle" | "setFormat" | "setRange" | "addSheet" | "deleteSheet";
+  type: "editCell" | "deleteCell" | "insertRow" | "deleteRow" | "insertCol" | "deleteCol" | "merge" | "unmerge" | "setStyle" | "setFormat" | "setRange" | "addSheet" | "deleteSheet" | "setStyleProps" | "setColor";
   timestamp: string; // ISO 8601
   user?: string; // User ID or session ID
   sheetId: string; // Which sheet was affected
@@ -436,6 +436,10 @@ export interface WorkbookJSON {
   externalReferences?: ExternalReference[];
   computed?: ComputedCache; // HyperFormula cache and dependency graph
   actionLog?: Action[]; // Undo/redo stack (simplified from nested ActionLog for easier iteration)
+  // Optional runtime HyperFormula hydration reference. Kept as `any` to avoid
+  // circular type dependencies; consumers should treat this as opaque and use
+  // the helper functions in the `hyperformula` module to manage lifecycle.
+  hf?: any | null;
 
   // Export metadata
   exportWarnings?: string[]; // Warnings from export operations about unsupported features
@@ -465,6 +469,18 @@ export interface ExportResult {
 }
 
 /**
+ * Options to control export behavior
+ */
+export interface ExportOptions {
+  /**
+   * If true, when precheck detects missing computed values the adapter may
+   * trigger a recompute (recomputeAndPatchCache) before performing the export.
+   * Default: false (opt-in because recompute can be expensive).
+   */
+  autoRecomputeOnExportWarning?: boolean;
+}
+
+/**
  * Export adapter interface for different file formats
  * Allows swapping export engines without touching core code
  */
@@ -473,7 +489,7 @@ export interface ExportAdapter {
    * Export workbook to binary format (XLSX, CSV, etc.)
    * Should preserve formulas (f) and computed values (v) for Excel compatibility
    */
-  export(workbook: WorkbookJSON): Promise<ArrayBuffer>;
+  export(workbook: WorkbookJSON, options?: ExportOptions): Promise<ArrayBuffer>;
 
   /**
    * Import binary format to workbook JSON

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SheetJSAdapter } from './adapters/sheetjs';
-import { createWorkbook, addSheet, setCell } from './utils';
+import { createWorkbook, addSheet } from './utils';
 
 // Comprehensive roundtrip test for critical Excel features
 // Note: keep this test focused on structural fields; heavy visual/style assertions

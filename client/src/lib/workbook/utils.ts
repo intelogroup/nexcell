@@ -73,6 +73,22 @@ export function createWorkbook(title = "Workbook"): WorkbookJSON {
   };
 }
 
+// Define a helper to attach a non-enumerable 'hf' runtime slot to a workbook.
+// This keeps hydration out of JSON serialization and prevents circular structure
+// serialization errors when cloning or logging workbooks.
+export function attachRuntimeHF(workbook: WorkbookJSON) {
+  try {
+    Object.defineProperty(workbook, 'hf', {
+      configurable: true,
+      writable: true,
+      enumerable: false,
+      value: null,
+    });
+  } catch (e) {
+    // ignore failures in read-only or proxy contexts
+  }
+}
+
 /**
  * Add a new sheet to the workbook
  */
@@ -269,6 +285,29 @@ export function toAddress(row: number, col: number): string {
 export function parseRange(range: string): { start: string; end: string } {
   const [start, end] = range.split(":");
   return { start, end: end || start };
+}
+
+/**
+ * Normalize a named range reference string.
+ * Handles optional leading '=' and absolute $ signs.
+ * Example inputs:
+ *  "=Sheet1!$A$1:$A$10" -> { sheet: 'Sheet1', range: 'A1:A10' }
+ *  "Sheet1!A1:A10" -> { sheet: 'Sheet1', range: 'A1:A10' }
+ *  "A1:A10" -> { sheet: undefined, range: 'A1:A10' }
+ */
+export function normalizeNamedRangeRef(ref: string): { sheet?: string; range: string } {
+  let r = ref.trim();
+  if (r.startsWith('=')) r = r.substring(1);
+  // If contains sheet! prefix
+  const excl = r.indexOf('!');
+  if (excl !== -1) {
+    const sheet = r.substring(0, excl);
+    let range = r.substring(excl + 1);
+    // Remove $ absolute markers
+    range = range.replace(/\$/g, '');
+    return { sheet, range };
+  }
+  return { range: r.replace(/\$/g, '') };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Header } from './Header';
 import { SettingsDialog } from './SettingsDialog';
 import { SheetTabs } from './SheetTabs';
@@ -11,9 +11,18 @@ import {
   createCellFromInput,
   toAddress,
 } from '@/lib/workbook';
+import { safeStringify } from '@/lib/workbook/utils';
 import { computeWorkbook } from '@/lib/workbook/hyperformula';
-import { parseAICommand, describeAction, EXAMPLE_COMMANDS } from '@/lib/ai/aiService';
-import { parseCommandWithAI, convertToWorkbookActions, findNextEmptyRow } from '@/lib/ai/openrouter';
+import { EXAMPLE_COMMANDS, chatWithAI } from '@/lib/ai/aiService';
+import { convertToWorkbookActions } from '@/lib/ai/openrouter';
+import { getSystemPrompt } from '@/lib/ai/systemPrompt';
+import { extractWorkbookContext, formatContextForAI } from '@/lib/ai/workbookContext';
+import extractActionsFromReply from '@/lib/ai/actionExtractor';
+
+// Utility for logging AI interactions and effects
+function logAIInteraction(event: string, details: any) {
+  console.log(`[AI-Workbook] ${event}:`, details);
+}
 
 export function MainLayout() {
   // New workbook system
@@ -23,11 +32,11 @@ export function MainLayout() {
     currentSheet,
     setCell,
     clearCell,
-    updateWorkbook,
     addNewSheet,
     switchSheet,
     renameSheet,
     deleteSheetById,
+    recompute,
   } = useWorkbook();
 
   const [workbookName, setWorkbookName] = useState(() => workbook.meta.title || 'Untitled');
@@ -47,73 +56,28 @@ export function MainLayout() {
   const COLS = 20;
 
   // Convert workbook to cell array for rendering
-  const cells = workbookToCellArray(workbook, currentSheetId, ROWS, COLS);
+  // Memoize conversion and log only when workbook or sheet changes to avoid noisy logs
+  const cells = useMemo(() => {
+    try {
+      // Use safe stringify to avoid circular JSON errors (HF runtime is non-enumerable but other cycles may exist)
+      logAIInteraction('Workbook used for UI canvas', safeStringify(workbook));
+    } catch (e) {
+      // ignore logging errors
+    }
+
+    return workbookToCellArray(workbook, currentSheetId, ROWS, COLS);
+  }, [workbook, currentSheetId, ROWS, COLS]);
 
   // Apply AI actions to workbook
-  const applyAction = (action: any) => {
-    switch (action.type) {
-      case 'setCellValue': {
-        const address = toAddress(action.row + 1, action.col + 1); // Convert to 1-based
-        const cell = createCellFromInput(String(action.value));
-        setCell(address, cell);
-        break;
-      }
-      case 'setCellFormula': {
-        const address = toAddress(action.row + 1, action.col + 1);
-        setCell(address, {
-          formula: action.formula,
-          dataType: 'formula',
-        });
-        break;
-      }
-      case 'clearRange': {
-        updateWorkbook(wb => {
-          const sheet = wb.sheets.find(s => s.id === currentSheetId);
-          if (sheet && sheet.cells) {
-            for (let r = action.startRow; r <= action.endRow; r++) {
-              for (let c = action.startCol; c <= action.endCol; c++) {
-                const address = toAddress(r + 1, c + 1);
-                delete sheet.cells[address];
-              }
-            }
-          }
-          return wb;
-        });
-        break;
-      }
-      case 'setRange': {
-        action.values.forEach((row: any[], r: number) => {
-          row.forEach((value: any, c: number) => {
-            const address = toAddress(action.startRow + r + 1, action.startCol + c + 1);
-            const cell = createCellFromInput(String(value));
-            setCell(address, cell);
-          });
-        });
-        break;
-      }
-      case 'setFormulaRange': {
-        action.formulas.forEach((row: string[], r: number) => {
-          row.forEach((formula: string, c: number) => {
-            const address = toAddress(action.startRow + r + 1, action.startCol + c + 1);
-            setCell(address, {
-              formula,
-              dataType: 'formula',
-            });
-          });
-        });
-        break;
-      }
-    }
-  };
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content,
       timestamp: new Date(),
     };
-    setMessages([...messages, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
 
     // Handle help command
     if (content.toLowerCase().trim() === 'help' || content.toLowerCase().trim() === '?') {
@@ -127,27 +91,64 @@ export function MainLayout() {
       return;
     }
 
-    // Try pattern matching first (fast)
-    const command = parseAICommand(content, currentSheetId);
-    
-    if (command.actions.length > 0) {
-      // Apply actions using pattern matching
-      command.actions.forEach(action => applyAction(action));
-      
-      const actionDescriptions = command.actions.map(describeAction).join('\n• ');
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `✓ Done! I've applied:\n• ${actionDescriptions}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+    // If this is a casual greeting or short chit-chat, send it to the conversational
+    // chat path (chatWithAI) so the model responds conversationally and DOES NOT
+    // attempt to generate structured workbook actions.
+    const isCasualGreeting = (msg: string) => {
+      if (!msg) return false;
+      const trimmed = msg.trim().toLowerCase();
+      return /^(hi|hello|hey|hiya|yo|how are you|good morning|good afternoon|good evening)[\.!?\s]*$/i.test(trimmed)
+        || (trimmed.length <= 4 && /^(hi|hey|yo)$/i.test(trimmed));
+    };
+
+    if (isCasualGreeting(content)) {
+      // Check for API key first to avoid throwing inside chatWithAI when
+      // no OpenRouter key is configured. This mirrors the check used in
+      // the AI-first flow below.
+      const apiKey = localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY;
+      if (!apiKey) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `Hi! To use the AI chat features you need to configure an OpenRouter API key in Settings. I'm still here to help with basic tips — try typing "help".`,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        return;
+      }
+
+      try {
+        // Use functional read of messages for conversation history to avoid stale closure
+        let history: { role: string; content: string }[] = [];
+        setMessages((prev) => {
+          history = prev.map(m => ({ role: m.role, content: m.content }));
+          return prev;
+        });
+        const reply = await chatWithAI(content, history);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: reply,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+          logAIInteraction('AI chat reply', reply);
+      } catch (err) {
+          logAIInteraction('chatWithAI error', err);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `I'm here! How can I help you today?`,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
+
       return;
     }
 
-    // Fall back to AI (OpenRouter) for complex commands
-    const apiKey = localStorage.getItem('openrouter_api_key') || 
-                   import.meta.env.VITE_OPENROUTER_API_KEY;
+    // AI-first flow: always send the message and workbook context to chatWithAI
+    const apiKey = localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY;
     if (!apiKey) {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -169,76 +170,94 @@ export function MainLayout() {
       };
       setMessages((prev) => [...prev, thinkingMessage]);
 
-      // Get context - include existing data for better AI understanding
-      const nextRow = findNextEmptyRow(currentSheet?.cells || {});
-      const existingCells = currentSheet?.cells || {};
-      
-      // Sample some existing data to give AI context
-      const sampleData: string[] = [];
-      Object.entries(existingCells).slice(0, 10).forEach(([addr, cell]) => {
-        const displayValue = cell.formula || cell.raw || '';
-        sampleData.push(`${addr}: ${displayValue}`);
-      });
-      
-      const context = {
-        lastRow: nextRow - 1,
-        lastCol: 5,
-        selectedCell: undefined,
-        clipboardData: undefined,
-        existingData: sampleData.length > 0 ? sampleData : undefined,
-      };
+      // Build full workbook context for AI
+      let workbookContextText = '';
+        try {
+        // Use safe stringify for logging to avoid circular structure throw when serializing HF internals or other cycles
+        logAIInteraction('Workbook used for AI context', safeStringify(workbook));
+        const ctx = await extractWorkbookContext(workbook, currentSheetId);
+        workbookContextText = formatContextForAI(ctx);
+      } catch (ctxErr) {
+        console.warn('Failed to extract workbook context for AI:', ctxErr);
+      }
 
-      // Call AI
-      const aiResponse = await parseCommandWithAI(content, apiKey, context);
-      
-      console.log('AI Response:', aiResponse);
+      // Use the official system prompt in ACT mode so AI knows when to act
+      const systemPrompt = getSystemPrompt('act');
+
+      // Call chatWithAI (conversation-first)
+  // Build conversation history from latest messages snapshot
+  const conversationHistory = (() => messages.map(m => ({ role: m.role, content: m.content })))();
+  const aiReply = await chatWithAI(
+    content + '\n\n' + (workbookContextText ? `Workbook Context:\n${workbookContextText}` : ''),
+    conversationHistory,
+    systemPrompt
+  );
 
       // Remove thinking message
       setMessages((prev) => prev.filter((m) => m.id !== thinkingMessage.id));
 
-      if (aiResponse.success && aiResponse.actions.length > 0) {
-        console.log('AI Actions:', aiResponse.actions);
-        
-        // Convert AI actions to workbook operations
-        const operations = convertToWorkbookActions(aiResponse.actions, {
+      // Append the assistant's natural reply
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: aiReply,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // Try to extract structured actions from the assistant reply
+      const actions = extractActionsFromReply(aiReply);
+      if (actions && actions.length > 0) {
+          console.log('[AI-Workbook] Extracted actions from AI reply:', actions);
+
+        // Convert AI actions to workbook operations using existing converter
+        const operations = convertToWorkbookActions(actions, {
           currentSheet: {
             cells: currentSheet?.cells || {},
             grid: currentSheet?.grid,
           },
         });
-        
-        console.log('Workbook Operations:', operations);
 
-        // Apply all operations
-        operations.forEach(op => {
-          if (op.cell === null) {
-            // Delete cell
-            clearCell(op.address);
-          } else {
-            setCell(op.address, op.cell);
+        console.log('[AI-Workbook] Converted operations:', operations);
+
+        // Apply operations safely
+          logAIInteraction('Workbook before operations', safeStringify(workbook));
+          let uiChanged = false;
+          operations.forEach(op => {
+            try {
+              if (op.cell === null) {
+                logAIInteraction('Clear cell', { address: op.address });
+                clearCell(op.address);
+                uiChanged = true;
+              } else {
+                console.log('[AI-Workbook] Set cell:', { address: op.address, cell: JSON.stringify(op.cell, null, 2) });
+                setCell(op.address, op.cell);
+                uiChanged = true;
+              }
+            } catch (err) {
+              logAIInteraction('Error applying operation', { op, error: err });
+            }
+          });
+          logAIInteraction('Workbook after operations', safeStringify(workbook));
+          if (!uiChanged) {
+            logAIInteraction('UI did not update after AI operations', { operations });
           }
-        });
 
-        // Success message
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          // Removed setTimeout recompute - operations.ts already handles eager compute with sync:true
+
+        // Optionally append a short confirmation to the assistant message
+        const confirmMessage: Message = {
+          id: (Date.now() + 2).toString(),
           role: 'assistant',
-          content: `✓ ${aiResponse.explanation}\n\nApplied ${operations.length} operation(s).`,
+          content: `✓ Applied ${operations.length} operation(s) as requested.`,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) => [...prev, confirmMessage]);
       } else {
-        // AI couldn't understand
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `I'm not sure how to help with that. ${aiResponse.explanation}\n\nTry being more specific, like:\n• "set A1 to 100"\n• "fill column B with 0"\n• "add formula =SUM(A1:A10) to B1"`,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        logAIInteraction('No actions extracted from AI reply', { reply: aiReply });
       }
     } catch (error) {
-      console.error('AI error:', error);
+        logAIInteraction('AI-first flow error', error);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -247,13 +266,14 @@ export function MainLayout() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
     }
-  };
+  }, [workbook, currentSheetId, currentSheet, setCell, clearCell, recompute, messages]);
 
-  const handleCellEdit = (row: number, col: number, value: string) => {
+  const handleCellEdit = useCallback((row: number, col: number, value: string) => {
     const address = toAddress(row + 1, col + 1); // Convert 0-based to 1-based
     const cell = createCellFromInput(value);
+    logAIInteraction('User cell edit', { address, cell });
     setCell(address, cell);
-  };
+  }, [setCell]);
 
   const handleExportJSON = () => {
     const json = JSON.stringify(workbook, null, 2);

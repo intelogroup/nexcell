@@ -5,13 +5,51 @@
 
 import { parseAddress, toAddress } from '@/lib/workbook';
 
+// Helper to normalise a value into a Cell-like object for operations
+function cellFromValue(value: any) {
+  // Treat strings that start with '=' as formulas
+  if (typeof value === 'string' && value.startsWith('=')) {
+    return { formula: value, dataType: 'formula' };
+  }
+
+  if (typeof value === 'number') {
+    return { raw: value, dataType: 'number' };
+  }
+
+  if (typeof value === 'boolean') {
+    return { raw: value, dataType: 'boolean' };
+  }
+
+  // Detect ISO-like dates (yyyy-mm-dd) and treat them as date type
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return { raw: value, dataType: 'date' };
+  }
+
+  // Fallback to string
+  return { raw: value, dataType: 'string' };
+}
+
 export interface StructuredAction {
-  type: 'setCellValue' | 'setCellFormula' | 'fillRange' | 'fillColumn' | 'fillRow' | 'clearRange' | 'insertRow' | 'insertColumn';
+  type:
+    | 'setCellValue'
+    | 'setCellFormula'
+    | 'fillRange'
+    | 'fillColumn'
+    | 'fillRow'
+    | 'clearRange'
+    | 'insertRow'
+    | 'insertColumn'
+    | 'setStyle'
+    | 'setRange';
   target?: string; // Cell address like "A1" or column like "B" or row like "5"
   value?: string | number | boolean;
   formula?: string;
   range?: { start: string; end: string };
   values?: any[][];
+  // For setRange actions the assistant might return a mapping of address -> value/cell
+  cells?: Record<string, any>;
+  // Style payload for setStyle
+  style?: any;
   position?: number;
 }
 
@@ -222,10 +260,7 @@ export function convertToWorkbookActions(
         if (action.target && action.value !== undefined) {
           operations.push({
             address: action.target,
-            cell: {
-              raw: action.value,
-              dataType: typeof action.value === 'number' ? 'number' : 'string',
-            },
+            cell: cellFromValue(action.value),
           });
         }
         break;
@@ -265,15 +300,9 @@ export function convertToWorkbookActions(
                 address,
                 cell: { formula, dataType: 'formula' },
               });
-            } else if (action.value !== undefined) {
-              operations.push({
-                address,
-                cell: {
-                  raw: action.value,
-                  dataType: typeof action.value === 'number' ? 'number' : 'string',
-                },
-              });
-            }
+              } else if (action.value !== undefined) {
+                operations.push({ address, cell: cellFromValue(action.value) });
+              }
           }
         }
         break;
@@ -313,13 +342,7 @@ export function convertToWorkbookActions(
                 processedValue = String(value);
               }
               
-              operations.push({
-                address,
-                cell: {
-                  raw: processedValue,
-                  dataType,
-                },
-              });
+                operations.push({ address, cell: { raw: processedValue, dataType } });
             });
           } else {
             // Fill entire row with single value or formula
@@ -338,13 +361,7 @@ export function convertToWorkbookActions(
                   cell: { formula, dataType: 'formula' },
                 });
               } else if (action.value !== undefined) {
-                operations.push({
-                  address,
-                  cell: {
-                    raw: action.value,
-                    dataType: typeof action.value === 'number' ? 'number' : 'string',
-                  },
-                });
+                operations.push({ address, cell: cellFromValue(action.value) });
               }
             }
           }
@@ -354,21 +371,30 @@ export function convertToWorkbookActions(
 
       case 'fillRange': {
         if (action.range && action.values) {
-          const { start } = action.range;
+          const { start, end } = action.range;
           const startPos = parseAddress(start);
+          const endPos = end ? parseAddress(end) : startPos;
           
-          action.values.forEach((row: any[], r: number) => {
-            row.forEach((value: any, c: number) => {
-              const address = toAddress(startPos.row + r, startPos.col + c);
-              operations.push({
-                address,
-                cell: {
-                  raw: value,
-                  dataType: typeof value === 'number' ? 'number' : 'string',
-                },
-              });
+          // Check if this is a single column (start and end have same column)
+          const isSingleColumn = startPos.col === endPos.col;
+          
+          if (isSingleColumn) {
+            // values is a 1D array for single column
+            action.values.forEach((value: any, r: number) => {
+              const address = toAddress(startPos.row + r, startPos.col);
+              operations.push({ address, cell: cellFromValue(value) });
             });
-          });
+          } else {
+            // values is a 2D array for multi-column ranges
+            action.values.forEach((row: any[], r: number) => {
+              if (Array.isArray(row)) {
+                row.forEach((value: any, c: number) => {
+                  const address = toAddress(startPos.row + r, startPos.col + c);
+                  operations.push({ address, cell: cellFromValue(value) });
+                });
+              }
+            });
+          }
         } else if (action.range && (action.value !== undefined || action.formula)) {
           const { start, end } = action.range;
           const startPos = parseAddress(start);
@@ -381,18 +407,11 @@ export function convertToWorkbookActions(
               if (action.formula) {
                 let formula = action.formula;
                 if (!formula.startsWith('=')) formula = '=' + formula;
-                operations.push({
-                  address,
-                  cell: { formula, dataType: 'formula' },
-                });
+                // Replace {row} placeholder with actual row number
+                formula = formula.replace(/\{row\}/g, row.toString());
+                operations.push({ address, cell: { formula, dataType: 'formula' } });
               } else if (action.value !== undefined) {
-                operations.push({
-                  address,
-                  cell: {
-                    raw: action.value,
-                    dataType: typeof action.value === 'number' ? 'number' : 'string',
-                  },
-                });
+                operations.push({ address, cell: cellFromValue(action.value) });
               }
             }
           }
@@ -400,6 +419,48 @@ export function convertToWorkbookActions(
         break;
       }
 
+      case 'setRange': {
+        // Allow assistant to provide a mapping of addresses to raw values or cell objects
+        if (action.cells && typeof action.cells === 'object') {
+          for (const [addr, value] of Object.entries(action.cells)) {
+            if (value && typeof value === 'object' && ('raw' in value || 'formula' in value || 'dataType' in value)) {
+              // Assume value is already a partial Cell
+              const cellObj: any = {};
+              if ('formula' in value) {
+                let formula = value.formula;
+                if (typeof formula === 'string' && !formula.startsWith('=')) formula = '=' + formula;
+                cellObj.formula = formula;
+                cellObj.dataType = 'formula';
+              }
+              if ('raw' in value) {
+                cellObj.raw = value.raw;
+                if (value.dataType) cellObj.dataType = value.dataType;
+                else cellObj.dataType = typeof value.raw === 'number' ? 'number' : 'string';
+              }
+              if (value.style) cellObj.style = value.style;
+
+              operations.push({ address: addr, cell: cellObj });
+            } else {
+              // Simple raw value
+              operations.push({ address: addr, cell: cellFromValue(value) });
+            }
+          }
+        }
+        break;
+      }
+
+      case 'setStyle': {
+        if (action.target && action.style) {
+          operations.push({
+            address: action.target,
+            cell: {
+              // Only include style props so applyEditCell will merge with existing cell
+              style: action.style,
+            },
+          });
+        }
+        break;
+      }
       case 'clearRange': {
         if (action.range) {
           const { start, end } = action.range;

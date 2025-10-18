@@ -11,7 +11,7 @@ import {
   parseAddress,
   toAddress,
   getCellsInRange,
-  getWorkbookStats,
+  getStats,
   SheetJSAdapter,
   type Cell,
 } from "./index";
@@ -94,7 +94,7 @@ console.log("✓ A1:B2 cells:", range); // ["A1", "A2", "B1", "B2"]
 
 // Test 6: Workbook stats
 console.log("\nTest 6: Workbook stats");
-const stats = getWorkbookStats(wb);
+const stats = getStats(wb);
 console.log("✓ Stats:", stats);
 
 // Test 7: Add merge

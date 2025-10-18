@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "workbookId": "fixture-array-1",
+  "meta": { "title": "Array Formula Fixture" },
+  "sheets": [
+    {
+      "id": "Sheet1",
+      "name": "Sheet1",
+      "cells": {
+        "A1": { "raw": 1 },
+        "A2": { "raw": 2 },
+        "B1": { "formula": "=TRANSPOSE({1,2})", "dataType": "formula", "arrayRange": "C1:D1" }
+      }
+    }
+  ],
+  "namedRanges": {}
+}

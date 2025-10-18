@@ -150,8 +150,8 @@ export type { ValidationResult, ValidationError } from "./validator";
 // ============================================================================
 // React Hook
 // ============================================================================
-
 export { useWorkbook } from "./useWorkbook";
+export { useWorkbookLazy } from "./useWorkbookLazy";
 
 // ============================================================================
 // Advanced / Low-level Exports
@@ -199,8 +199,3 @@ export {
 // ============================================================================
 // Test Utilities
 // ============================================================================
-
-export { runRoundTripTest } from "./roundtrip.test";
-export { runWorkbookPropertiesTests } from "./workbook-properties.test";
-// export { runSheetMetadataTests } from "./sheet-metadata.test"; // Temporarily disabled - converting to Vitest format
-export { runHyperFormulaHydrationTests } from "./hyperformula.hydration.test";

@@ -229,7 +229,6 @@ describe("Round-Trip: Full Integration (Formats + Formulas + Layout + HF)", () =
   });
 
   it("should handle date formulas with date formats", async () => {
-    const sheet = workbook.sheets[0];
 
     // Today's date (serial number)
     const today = 44927; // 2023-01-15

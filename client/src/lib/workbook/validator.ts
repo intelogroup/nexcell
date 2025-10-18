@@ -3,7 +3,7 @@
  * Uses JSON Schema validation with Ajv
  */
 
-import type { WorkbookJSON } from "./types";
+
 import schema from "./schema.json";
 
 export interface ValidationResult {
@@ -23,7 +23,8 @@ async function getAjv() {
   if (!ajv) {
     const Ajv = (await import("ajv")).default;
     const addFormats = (await import("ajv-formats")).default;
-    ajv = new Ajv({ allErrors: true, verbose: true });
+  // Allow union type keyword in schema (some schema definitions use union types).
+  ajv = new Ajv({ allErrors: true, verbose: true, allowUnionTypes: true });
     addFormats(ajv); // Register date-time and other standard formats
   }
   return ajv;

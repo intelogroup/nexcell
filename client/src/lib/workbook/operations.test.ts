@@ -56,6 +56,16 @@ export function runOperationsTests(): void {
   }
 }
 
+// Vitest compatibility wrapper: call the harness within a test so test runner picks it up
+// This keeps the legacy console-based harness available while allowing automated test runs.
+import { describe, it } from 'vitest';
+
+describe('Operations legacy harness', () => {
+  it('runs legacy operations harness without throwing', () => {
+    runOperationsTests();
+  });
+});
+
 /**
  * Test 1: Basic editCell operation
  */

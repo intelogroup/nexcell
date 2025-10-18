@@ -21,7 +21,7 @@ import type {
   CellStyle,
 } from "./types";
 import type { HydrationResult } from "./hyperformula";
-import { recomputeAndPatchCache } from "./hyperformula";
+import { recomputeAndPatchCache, getOrCreateHydration } from "./hyperformula";
 import {
   generateId,
   getSheet,
@@ -29,10 +29,116 @@ import {
   setCell,
   deleteCell,
   parseAddress,
+  parseRange,
+  normalizeNamedRangeRef,
   toAddress,
   getCellsInRange,
+  addressToHf,
 } from "./utils";
 import { makeSheet } from "./workbook";
+
+// Helper: update a single named range ref object (string or NamedRange) for a row insert/delete
+function updateNamedRangeForRow(workbook: WorkbookJSON, sheetName: string, nameKey: string, ref: string | any, insertRow: number, count: number, isInsert: boolean) {
+  if (typeof ref === 'string') {
+    const norm = normalizeNamedRangeRef(ref);
+    if (norm.sheet && norm.sheet !== sheetName) return ref;
+    // Only handle simple A1:A10 shapes
+    try {
+      const { start, end } = parseRange(norm.range);
+      const s = parseAddress(start);
+      const e = parseAddress(end);
+      let changed = false;
+      if (isInsert) {
+        if (insertRow >= s.row && insertRow <= e.row) { e.row += count; changed = true; }
+        else { if (s.row >= insertRow) { s.row += count; changed = true; } if (e.row >= insertRow) { e.row += count; changed = true; } }
+      } else {
+        if (insertRow >= s.row && insertRow <= e.row) { e.row -= count; changed = true; }
+        else { if (s.row >= insertRow) { s.row -= count; changed = true; } if (e.row >= insertRow) { e.row -= count; changed = true; } }
+      }
+      if (changed) {
+        const newRef = (norm.sheet ? norm.sheet + '!' : '') + toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+        workbook.namedRanges = workbook.namedRanges || {};
+        workbook.namedRanges[nameKey] = newRef;
+      }
+    } catch (e) {
+      return ref;
+    }
+  } else if (ref && typeof ref === 'object' && ref.ref) {
+    // NamedRange object
+    const nr = ref as any;
+    const norm = normalizeNamedRangeRef(nr.ref);
+    if (norm.sheet && norm.sheet !== sheetName) return ref;
+    try {
+      const { start, end } = parseRange(norm.range);
+      const s = parseAddress(start);
+      const e = parseAddress(end);
+      let changed = false;
+      if (isInsert) {
+        if (insertRow >= s.row && insertRow <= e.row) { e.row += count; changed = true; }
+        else { if (s.row >= insertRow) { s.row += count; changed = true; } if (e.row >= insertRow) { e.row += count; changed = true; } }
+      } else {
+        if (insertRow >= s.row && insertRow <= e.row) { e.row -= count; changed = true; }
+        else { if (s.row >= insertRow) { s.row -= count; changed = true; } if (e.row >= insertRow) { e.row -= count; changed = true; } }
+      }
+      if (changed) {
+        nr.ref = (norm.sheet ? norm.sheet + '!' : '') + toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      }
+  
+    } catch (e) {
+      return ref;
+    }
+  }
+}
+
+// Helper: update a single named range ref object (string or NamedRange) for a column insert/delete
+function updateNamedRangeForCol(workbook: WorkbookJSON, sheetName: string, nameKey: string, ref: string | any, insertCol: number, count: number, isInsert: boolean) {
+  if (typeof ref === 'string') {
+    const norm = normalizeNamedRangeRef(ref);
+    if (norm.sheet && norm.sheet !== sheetName) return ref;
+    try {
+      const { start, end } = parseRange(norm.range);
+      const s = parseAddress(start);
+      const e = parseAddress(end);
+      let changed = false;
+      if (isInsert) {
+        if (insertCol >= s.col && insertCol <= e.col) { e.col += count; changed = true; }
+        else { if (s.col >= insertCol) { s.col += count; changed = true; } if (e.col >= insertCol) { e.col += count; changed = true; } }
+      } else {
+        if (insertCol >= s.col && insertCol <= e.col) { e.col -= count; changed = true; }
+        else { if (s.col >= insertCol) { s.col -= count; changed = true; } if (e.col >= insertCol) { e.col -= count; changed = true; } }
+      }
+      if (changed) {
+        const newRef = (norm.sheet ? norm.sheet + '!' : '') + toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+        workbook.namedRanges = workbook.namedRanges || {};
+        workbook.namedRanges[nameKey] = newRef;
+      }
+    } catch (e) {
+      return ref;
+    }
+  } else if (ref && typeof ref === 'object' && ref.ref) {
+    const nr = ref as any;
+    const norm = normalizeNamedRangeRef(nr.ref);
+    if (norm.sheet && norm.sheet !== sheetName) return ref;
+    try {
+      const { start, end } = parseRange(norm.range);
+      const s = parseAddress(start);
+      const e = parseAddress(end);
+      let changed = false;
+      if (isInsert) {
+        if (insertCol >= s.col && insertCol <= e.col) { e.col += count; changed = true; }
+        else { if (s.col >= insertCol) { s.col += count; changed = true; } if (e.col >= insertCol) { e.col += count; changed = true; } }
+      } else {
+        if (insertCol >= s.col && insertCol <= e.col) { e.col -= count; changed = true; }
+        else { if (s.col >= insertCol) { s.col -= count; changed = true; } if (e.col >= insertCol) { e.col -= count; changed = true; } }
+      }
+      if (changed) {
+        nr.ref = (norm.sheet ? norm.sheet + '!' : '') + toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      }
+    } catch (e) {
+      return ref;
+    }
+  }
+}
 
 // ============================================================================
 // Operation Types
@@ -126,6 +232,25 @@ export interface SetStyleOp extends Operation {
 }
 
 /**
+ * Set partial style properties (merge with existing style)
+ */
+export interface SetStylePropsOp extends Operation {
+  type: "setStyleProps";
+  address: string;
+  styleProps: Partial<CellStyle>;
+}
+
+/**
+ * Set a single color value (bgColor or color) on a cell
+ */
+export interface SetColorOp extends Operation {
+  type: "setColor";
+  address: string;
+  colorType: "bgColor" | "color";
+  color: string | null; // null to clear
+}
+
+/**
  * Set number format
  */
 export interface SetFormatOp extends Operation {
@@ -149,7 +274,8 @@ export interface SetRangeOp extends Operation {
 export type AnyOperation =
   | { type: 'addSheet'; name?: string }
   | { type: 'deleteSheet'; sheetId: string }
-  | (EditCellOp | DeleteCellOp | InsertRowOp | DeleteRowOp | InsertColOp | DeleteColOp | MergeOp | UnmergeOp | SetStyleOp | SetFormatOp | SetRangeOp);
+  | (EditCellOp | DeleteCellOp | InsertRowOp | DeleteRowOp | InsertColOp | DeleteColOp | MergeOp | UnmergeOp | SetStyleOp | SetStylePropsOp | SetColorOp | SetFormatOp | SetRangeOp);
+
 
 // Note: addSheet/deleteSheet are higher-level operations that may be
 // implemented by callers directly on the workbook model. We include
@@ -248,6 +374,7 @@ export interface ApplyOptions {
   skipValidation?: boolean; // Skip validation (use with caution)
   skipRecompute?: boolean; // Skip HF recompute (useful for batch operations)
   hydration?: HydrationResult; // Existing HF instance (for recompute)
+  sync?: boolean; // Sync workbook computed cache after operations (default: true)
 }
 
 // ============================================================================
@@ -348,15 +475,101 @@ export function applyOperations(
     // Update metadata
     workbook.meta.modifiedAt = new Date().toISOString();
 
-    // Trigger HF recompute if needed
-    if (!options.skipRecompute && options.hydration && affectedRanges.length > 0) {
+    // Trigger HF recompute if needed.
+    // Behaviour:
+    // - If caller passed `options.hydration`, use it.
+    // - Otherwise, if sync is enabled (default) and no hydration provided,
+    //   create a temporary hydration via hf.getOrCreateHydration and use it.
+    console.log('[HF-ops] Checking recompute conditions:', {
+      sync: options.sync,
+      affectedRangesCount: affectedRanges.length,
+      skipRecompute: options.skipRecompute,
+      shouldRecompute: options.sync !== false && affectedRanges.length > 0 && !options.skipRecompute
+    });
+    if (options.sync !== false && affectedRanges.length > 0 && !options.skipRecompute) {
+      console.log('[HF-ops] Starting recompute for affected ranges:', affectedRanges);
       try {
-        recomputeAndPatchCache(workbook, options.hydration, {
-          affectedRanges,
-        });
+        let hydrationToUse = options.hydration as HydrationResult | undefined;
+        if (!hydrationToUse) {
+          console.log('[HF-ops] No hydration provided, creating new one...');
+          // Use imported function instead of dynamic require to avoid module resolution issues
+          hydrationToUse = getOrCreateHydration(workbook);
+          console.log('[HF-ops] Hydration created:', {
+            hasHF: !!hydrationToUse?.hf,
+            sheetMapSize: hydrationToUse?.sheetMap?.size,
+            warnings: hydrationToUse?.warnings
+          });
+          // Attach runtime hf pointer so callers (useWorkbook) can reuse
+          try {
+            (workbook as any).hf = hydrationToUse;
+          } catch {
+            // ignore assignment failures in read-only contexts
+          }
+        }
+
+        if (hydrationToUse) {
+          try {
+            // Before recomputing, sync any affected cells to HyperFormula
+            console.log('[HF-ops] Syncing affected cells to HyperFormula...');
+            for (const range of affectedRanges) {
+              const sheet = getSheet(workbook, range.sheetId);
+              if (!sheet) continue;
+
+              const hfSheetId = hydrationToUse.sheetMap.get(range.sheetId);
+              if (hfSheetId === undefined) continue;
+
+              // Parse the range to get affected cells
+              // For single cell addresses like "A1", just update that cell
+              // For ranges like "A1:B10", we'd need to parse it properly
+              // For simplicity, treat as single cell if no colon
+              const addresses = range.range.includes(':') 
+                ? [] // TODO: implement range parsing
+                : [range.range];
+
+              for (const address of addresses) {
+                try {
+                  const cell = getCell(workbook, range.sheetId, address);
+                  const { row, col } = addressToHf(address);
+
+                  // Update HyperFormula with the cell content
+                  let hfValue: any;
+                  if (!cell || (cell.raw === null && !cell.formula)) {
+                    // Cell was deleted
+                    hfValue = null;
+                  } else if (cell.formula) {
+                    hfValue = cell.formula.startsWith('=') ? cell.formula : `=${cell.formula}`;
+                  } else {
+                    hfValue = cell.raw;
+                  }
+
+                  console.log(`[HF-ops]   Syncing ${sheet.name}!${address} -> HF (row=${row}, col=${col})`, { hfValue });
+                  hydrationToUse.hf.setCellContents({ sheet: hfSheetId, row, col }, hfValue);
+                } catch (err) {
+                  console.warn(`[HF-ops]   Failed to sync ${address}:`, err);
+                }
+              }
+            }
+
+            console.log('[HF-ops] Calling recomputeAndPatchCache...');
+            const recomputeResult = recomputeAndPatchCache(workbook, hydrationToUse, { affectedRanges });
+            console.log('[HF-ops] Recompute result:', { 
+              updatedCells: recomputeResult.updatedCells, 
+              errors: recomputeResult.errors, 
+              warnings: recomputeResult.warnings 
+            });
+          } catch (err) {
+            console.error('[HF-ops] Recompute error:', err);
+            warnings.push(`Failed to recompute formulas: ${err}`);
+          }
+        } else {
+          console.warn('[HF-ops] No hydration available for recompute');
+        }
       } catch (error) {
+        console.error('[HF-ops] Hydration creation error:', error);
         warnings.push(`Failed to recompute formulas: ${error}`);
       }
+    } else {
+      console.log('[HF-ops] Skipping recompute');
     }
 
     return {
@@ -423,6 +636,10 @@ function applyOperation(
         return applyUnmerge(workbook, op, options);
       case "setStyle":
         return applySetStyle(workbook, op, options);
+      case "setStyleProps":
+        return applySetStyleProps(workbook, op as SetStylePropsOp, options);
+      case "setColor":
+        return applySetColor(workbook, op as SetColorOp, options);
       case "setFormat":
         return applySetFormat(workbook, op, options);
       case "setRange":
@@ -608,6 +825,36 @@ function applyInsertRow(
 
   sheet.cells = newCells;
 
+    // Update mergedRanges
+    if (sheet.mergedRanges) {
+      sheet.mergedRanges = sheet.mergedRanges.map(range => {
+        const { start, end } = parseRange(range);
+        const s = parseAddress(start);
+        const e = parseAddress(end);
+        // Expand merged range if insert is inside (inclusive)
+        if (insertRow >= s.row && insertRow <= e.row) {
+          e.row += count;
+        } else {
+          if (s.row >= insertRow) s.row += count;
+          if (e.row >= insertRow) e.row += count;
+        }
+        return toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      });
+    }
+
+  // Update workbook-level namedRanges using helper (handles strings and NamedRange objects)
+  if (workbook.namedRanges) {
+    for (const [name, ref] of Object.entries(workbook.namedRanges)) {
+      updateNamedRangeForRow(workbook, sheet.name, name, ref, insertRow, count, true);
+    }
+  }
+  // Also update sheet-level namedRanges if present
+  if (sheet.namedRanges) {
+    for (const [name, ref] of Object.entries(sheet.namedRanges)) {
+      updateNamedRangeForRow(workbook, sheet.name, name, ref, insertRow, count, true);
+    }
+  }
+
   // Create action with inverse
   const action: Action = {
     id: generateId(),
@@ -682,6 +929,24 @@ function applyDeleteRow(
 
   sheet.cells = newCells;
 
+    // Update mergedRanges
+    if (sheet.mergedRanges) {
+      sheet.mergedRanges = sheet.mergedRanges.map(range => {
+        const { start, end } = parseRange(range);
+        const s = parseAddress(start);
+        const e = parseAddress(end);
+        if (s.row >= deleteRow) s.row -= count;
+        if (e.row >= deleteRow) e.row -= count;
+        return toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      });
+    }
+
+    if (workbook.namedRanges) {
+      for (const [name, ref] of Object.entries(workbook.namedRanges)) {
+        updateNamedRangeForRow(workbook, sheet.name, name, ref, deleteRow, count, false);
+      }
+    }
+
   // Create action with inverse
   const action: Action = {
     id: generateId(),
@@ -752,6 +1017,29 @@ function applyInsertCol(
   }
 
   sheet.cells = newCells;
+
+    // Update mergedRanges on column insert to keep ranges consistent
+    if (sheet.mergedRanges) {
+      sheet.mergedRanges = sheet.mergedRanges.map(range => {
+        const { start, end } = parseRange(range);
+        const s = parseAddress(start);
+        const e = parseAddress(end);
+        // Expand merged range if insert is inside (inclusive)
+        if (insertCol >= s.col && insertCol <= e.col) {
+          e.col += count;
+        } else {
+          if (s.col >= insertCol) s.col += count;
+          if (e.col >= insertCol) e.col += count;
+        }
+        return toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      });
+    }
+
+    if (workbook.namedRanges) {
+      for (const [name, ref] of Object.entries(workbook.namedRanges)) {
+        updateNamedRangeForCol(workbook, sheet.name, name, ref, insertCol, count, true);
+      }
+    }
 
   // Create action with inverse
   const action: Action = {
@@ -828,6 +1116,24 @@ function applyDeleteCol(
   }
 
   sheet.cells = newCells;
+
+    // Update mergedRanges
+    if (sheet.mergedRanges) {
+      sheet.mergedRanges = sheet.mergedRanges.map(range => {
+        const { start, end } = parseRange(range);
+        const s = parseAddress(start);
+        const e = parseAddress(end);
+        if (s.col >= deleteCol) s.col -= count;
+        if (e.col >= deleteCol) e.col -= count;
+        return toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      });
+    }
+
+    if (workbook.namedRanges) {
+      for (const [name, ref] of Object.entries(workbook.namedRanges)) {
+        updateNamedRangeForCol(workbook, sheet.name, name, ref, deleteCol, count, false);
+      }
+    }
 
   // Create action with inverse
   const action: Action = {
@@ -1205,6 +1511,8 @@ function validateOperation(
     case "editCell":
     case "deleteCell":
     case "setStyle":
+    case "setStyleProps":
+    case "setColor":
     case "setFormat": {
       // Validate address
       try {
@@ -1306,4 +1614,152 @@ export function createSetRangeOp(
     range,
     cells,
   };
+}
+
+/**
+ * Create setStyleProps operation
+ */
+export function createSetStylePropsOp(
+  sheetId: string,
+  address: string,
+  styleProps: Partial<CellStyle>
+): SetStylePropsOp {
+  return {
+    type: 'setStyleProps',
+    sheetId,
+    address,
+    styleProps,
+  };
+}
+
+/**
+ * Create setColor operation
+ */
+export function createSetColorOp(
+  sheetId: string,
+  address: string,
+  colorType: 'bgColor' | 'color',
+  color: string | null
+): SetColorOp {
+  return {
+    type: 'setColor',
+    sheetId,
+    address,
+    colorType,
+    color,
+  };
+}
+
+// Apply partial style properties by shallow merging with existing style
+function applySetStyleProps(
+  workbook: WorkbookJSON,
+  op: SetStylePropsOp,
+  options: ApplyOptions
+): ReturnType<typeof applyOperation> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const sheet = getSheet(workbook, op.sheetId);
+  if (!sheet) {
+    errors.push(`Sheet not found: ${op.sheetId}`);
+    return { action: null, affectedRange: null, errors, warnings };
+  }
+
+  const oldCell = getCell(workbook, op.sheetId, op.address);
+  const oldStyle = oldCell?.style;
+
+  const newStyle = { ...(oldStyle || {}), ...op.styleProps };
+  const newCell: Cell = {
+    ...oldCell,
+    style: newStyle,
+  };
+  setCell(workbook, op.sheetId, op.address, newCell);
+
+  const action: Action = {
+    id: generateId(),
+    type: 'setStyleProps',
+    timestamp: new Date().toISOString(),
+    user: options.user,
+    sheetId: op.sheetId,
+    payload: {
+      address: op.address,
+      styleProps: op.styleProps,
+    },
+    inverse: {
+      id: generateId(),
+      type: 'setStyle',
+      timestamp: new Date().toISOString(),
+      user: options.user,
+      sheetId: op.sheetId,
+      payload: {
+        address: op.address,
+        style: oldStyle || {},
+      },
+    },
+  };
+
+  const affectedRange = { sheetId: op.sheetId, range: op.address };
+
+  return { action, affectedRange, errors, warnings };
+}
+
+// Apply setColor operation which sets either bgColor or color property
+function applySetColor(
+  workbook: WorkbookJSON,
+  op: SetColorOp,
+  options: ApplyOptions
+): ReturnType<typeof applyOperation> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const sheet = getSheet(workbook, op.sheetId);
+  if (!sheet) {
+    errors.push(`Sheet not found: ${op.sheetId}`);
+    return { action: null, affectedRange: null, errors, warnings };
+  }
+
+  const oldCell = getCell(workbook, op.sheetId, op.address);
+  const oldStyle = oldCell?.style;
+
+  const newStyle = { ...(oldStyle || {}) } as CellStyle;
+  if (op.color === null) {
+    // delete the property
+    delete (newStyle as any)[op.colorType];
+  } else {
+    (newStyle as any)[op.colorType] = op.color;
+  }
+
+  const newCell: Cell = {
+    ...oldCell,
+    style: newStyle,
+  };
+  setCell(workbook, op.sheetId, op.address, newCell);
+
+  const action: Action = {
+    id: generateId(),
+    type: 'setColor',
+    timestamp: new Date().toISOString(),
+    user: options.user,
+    sheetId: op.sheetId,
+    payload: {
+      address: op.address,
+      colorType: op.colorType,
+      color: op.color,
+    },
+    inverse: {
+      id: generateId(),
+      type: 'setStyle',
+      timestamp: new Date().toISOString(),
+      user: options.user,
+      sheetId: op.sheetId,
+      payload: {
+        address: op.address,
+        style: oldStyle || {},
+      },
+    },
+  };
+
+  const affectedRange = { sheetId: op.sheetId, range: op.address };
+
+  return { action, affectedRange, errors, warnings };
 }

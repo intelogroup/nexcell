@@ -67,9 +67,9 @@ describe('Workbook Properties', () => {
     const parsed: WorkbookJSON = JSON.parse(json);
 
     expect(parsed.workbookProperties).toBeTruthy();
-    expect(parsed.workbookProperties.defaultRowHeight).toBe(21);
-    expect(parsed.workbookProperties.defaultColWidth).toBe(100);
-    expect(parsed.workbookProperties.workbookView?.firstSheet).toBe(0);
+    expect(parsed.workbookProperties?.defaultRowHeight).toBe(21);
+    expect(parsed.workbookProperties?.defaultColWidth).toBe(100);
+    expect(parsed.workbookProperties?.workbookView?.firstSheet).toBe(0);
   });
 });
 

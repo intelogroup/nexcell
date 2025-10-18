@@ -4,8 +4,9 @@
  * Supports: formulas, basic styles, merges, column widths, row heights
  */
 
-import type { ExportAdapter, WorkbookJSON, SheetJSON, Cell } from "../types";
+import type { ExportAdapter, WorkbookJSON, SheetJSON, Cell, ExportOptions } from "../types";
 import { createWorkbook, generateId, parseAddress, toAddress } from "../utils";
+import { computeWorkbook } from '../hyperformula';
 
 // Local narrow shapes to avoid using `any` for SheetJS runtime objects.
 type SheetJSUtilsLike = { decode_range?: (ref: string) => { s: { r: number; c: number }; e: { r: number; c: number } }; encode_range?: (r: unknown) => string };
@@ -41,12 +42,39 @@ export class SheetJSAdapter implements ExportAdapter {
     rowHeights: true,
   };
 
-  async export(workbook: WorkbookJSON): Promise<ArrayBuffer> {
+  async export(workbook: WorkbookJSON, options?: ExportOptions): Promise<ArrayBuffer> {
     // Dynamic import to avoid bundling if not used
     const XLSX = await import("xlsx");
-    
     const wb = XLSX.utils.book_new();
     const warnings: string[] = [];
+
+    // Run pre-export checks (non-destructive) to detect missing computed values
+    try {
+      // Import locally to avoid cycle at module load
+      const { precheckWorkbookForExport } = await import('../export-precheck');
+      const preWarnings = precheckWorkbookForExport(workbook);
+      if (preWarnings && preWarnings.length > 0) {
+        preWarnings.forEach(w => warnings.push(`[Precheck] ${w.message}`));
+
+        // Optionally trigger recompute to fill computed.v entries when caller opts in
+        if (options?.autoRecomputeOnExportWarning) {
+          try {
+            // computeWorkbook will perform hydration + recompute and mutate the workbook
+            await computeWorkbook(workbook, { validateFormulas: false });
+            // Re-run precheck to collect any remaining warnings
+            const post = precheckWorkbookForExport(workbook);
+            if (post && post.length > 0) {
+              post.forEach(p => warnings.push(`[Precheck-after-recompute] ${p.message}`));
+            }
+          } catch (e) {
+            warnings.push(`Auto-recompute failed: ${e}`);
+          }
+        }
+      }
+    } catch (e) {
+      // If precheck fails unexpectedly, do not block export — just log
+      try { console.warn('Export precheck failed:', e); } catch {}
+    }
     
     // Collect unsupported features for export warnings
     this.collectUnsupportedFeatures(workbook, warnings);
@@ -160,6 +188,14 @@ export class SheetJSAdapter implements ExportAdapter {
       cellStyles: true, // Preserve cell styles
     });
     return buffer;
+  }
+
+  /**
+   * Backwards-compatible alias for older harnesses and consumers.
+   * Deprecated: use `export(workbook, options)` instead.
+   */
+  async exportWorkbook(workbook: WorkbookJSON, options?: ExportOptions): Promise<ArrayBuffer> {
+    return this.export(workbook, options);
   }
 
   async import(data: Blob | ArrayBuffer): Promise<WorkbookJSON> {
@@ -361,6 +397,14 @@ export class SheetJSAdapter implements ExportAdapter {
       }
     
     return workbook;
+  }
+
+  /**
+   * Backwards-compatible alias for older harnesses and consumers.
+   * Deprecated: use `import(data)` instead.
+   */
+  async loadWorkbook(data: Blob | ArrayBuffer): Promise<WorkbookJSON> {
+    return this.import(data);
   }
 
   private sheetToWorksheet(sheet: SheetJSON, XLSX: unknown, warnings: string[]): Record<string, unknown> {

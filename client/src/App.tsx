@@ -1,6 +1,7 @@
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './components/layout';
 import { RoundTripTestPage } from './components/test';
+import LazyLoadingDemo from './pages/LazyLoadingDemo';
 
 function App() {
   // Check for test mode
@@ -11,6 +12,14 @@ function App() {
     return (
       <ErrorBoundary>
         <RoundTripTestPage />
+      </ErrorBoundary>
+    );
+  }
+
+  if (testMode === 'lazy') {
+    return (
+      <ErrorBoundary>
+        <LazyLoadingDemo />
       </ErrorBoundary>
     );
   }

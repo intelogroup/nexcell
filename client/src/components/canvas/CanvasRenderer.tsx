@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { type CellData } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -7,24 +7,56 @@ import { FormatToolbar } from './FormatToolbar';
 import { StyleToolbar } from './StyleToolbar';
 import { excelTheme } from '../../lib/excel-theme';
 
-interface CanvasRendererProps {
+interface CanvasRendererStaticProps {
   data: CellData[][];
   onCellEdit: (row: number, col: number, value: string) => void;
+  rowCount?: number;
+  colCount?: number;
+  getCellAt?: never;
+  onViewportChange?: never;
 }
+
+interface CanvasRendererLazyProps {
+  data?: never;
+  onCellEdit: (row: number, col: number, value: string) => void;
+  rowCount: number;
+  colCount: number;
+  getCellAt: (row: number, col: number) => CellData | undefined;
+  onViewportChange?: (range: { rowStart: number; rowEnd: number; colStart: number; colEnd: number }) => void;
+}
+
+type CanvasRendererProps = CanvasRendererStaticProps | CanvasRendererLazyProps;
 
 const COLUMN_WIDTH = 120;
 const ROW_HEIGHT = 32;
 const HEADER_HEIGHT = 32;
 
-export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
+export function CanvasRenderer(props: CanvasRendererProps) {
+  const { onCellEdit } = props;
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
   const [editingCell, setEditingCell] = useState<{ row: number; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [isStartingEdit, setIsStartingEdit] = useState(false);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // Determine if we're in lazy loading mode
+  const isLazyMode = 'getCellAt' in props;
+
+  // Narrow props per mode to satisfy TypeScript
+  const lazyProps = props as CanvasRendererLazyProps;
+  const staticProps = props as CanvasRendererStaticProps;
+
+  // Get data access functions based on mode (assert non-null for lazy props)
+  const getCellData = isLazyMode
+    ? lazyProps.getCellAt
+    : (row: number, col: number) => staticProps.data[row]?.[col];
+
+  const rowCount = (isLazyMode ? lazyProps.rowCount : staticProps.data.length) as number;
+  const colCount = (isLazyMode ? lazyProps.colCount : (staticProps.data[0]?.length || 0)) as number;
+
   const rowVirtualizer = useVirtualizer({
-    count: data.length,
+    count: rowCount,
     getScrollElement: () => parentRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 3,
@@ -32,23 +64,49 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
 
   const colVirtualizer = useVirtualizer({
     horizontal: true,
-    count: data[0]?.length || 0,
+    count: colCount,
     getScrollElement: () => parentRef.current,
     estimateSize: () => COLUMN_WIDTH,
     overscan: 3,
   });
+
+  // Handle viewport changes for lazy loading
+  useEffect(() => {
+    if (!isLazyMode || !props.onViewportChange) return;
+    
+    const virtualRows = rowVirtualizer.getVirtualItems();
+    const virtualCols = colVirtualizer.getVirtualItems();
+    
+    if (virtualRows.length > 0 && virtualCols.length > 0) {
+      const range = {
+        rowStart: virtualRows[0].index,
+        rowEnd: virtualRows[virtualRows.length - 1].index,
+        colStart: virtualCols[0].index,
+        colEnd: virtualCols[virtualCols.length - 1].index,
+      };
+      
+      props.onViewportChange(range);
+    }
+  }, [isLazyMode, props.onViewportChange, rowVirtualizer, colVirtualizer]);
 
   const handleCellClick = (row: number, col: number) => {
     if (editingCell) {
       commitEdit();
     }
     setSelectedCell({ row, col });
+    // Ensure the canvas container receives keyboard events after clicking a cell
+    // so typing while a cell is selected will be handled by handleKeyDown.
+    try {
+      parentRef.current?.focus();
+    } catch (e) {
+      // ignore
+    }
   };
 
   const handleCellDoubleClick = (row: number, col: number) => {
-    const cell = data[row][col];
+    const cell = getCellData(row, col);
     setEditingCell({ row, col });
-    setEditValue(cell.formula || String(cell.value || ''));
+    setEditValue(cell?.formula ?? String(cell?.value ?? ''));
   };
 
   const commitEdit = () => {
@@ -82,10 +140,32 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         commitEdit();
+        setIsStartingEdit(false);
       } else if (e.key === 'Escape') {
         e.preventDefault();
         cancelEdit();
+        setIsStartingEdit(false);
+      } else if (isStartingEdit) {
+        // While starting edit and input is rendering, accumulate typed characters
+        const isPrintable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+        if (isPrintable) {
+          e.preventDefault();
+          setEditValue(prev => prev + e.key);
+        }
       }
+      return;
+    }
+
+    // If a printable character is typed while a cell is selected (not already editing),
+    // start edit mode and seed the input with that character. This mirrors spreadsheet UX
+    // where typing replaces the cell contents and begins editing.
+    const isPrintable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+    if (!editingCell && selectedCell && isPrintable) {
+      e.preventDefault();
+      const seed = e.key;
+      setEditingCell({ row: selectedCell.row, col: selectedCell.col });
+      setEditValue(seed);
+      setIsStartingEdit(true);
       return;
     }
 
@@ -105,9 +185,9 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
       let newCol = selectedCell.col;
 
       if (e.key === 'ArrowUp') newRow = Math.max(0, newRow - 1);
-      else if (e.key === 'ArrowDown') newRow = Math.min(data.length - 1, newRow + 1);
+      else if (e.key === 'ArrowDown') newRow = Math.min(rowCount - 1, newRow + 1);
       else if (e.key === 'ArrowLeft') newCol = Math.max(0, newCol - 1);
-      else if (e.key === 'ArrowRight') newCol = Math.min(data[0].length - 1, newCol + 1);
+      else if (e.key === 'ArrowRight') newCol = Math.min(colCount - 1, newCol + 1);
 
       setSelectedCell({ row: newRow, col: newCol });
     }
@@ -124,7 +204,7 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
   };
 
   const currentCellValue = selectedCell 
-    ? data[selectedCell.row][selectedCell.col]
+    ? getCellData(selectedCell.row, selectedCell.col)
     : null;
 
   return (
@@ -166,7 +246,24 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
             onCellEdit(selectedCell.row, selectedCell.col, value);
           }
         }}
-        onCancel={() => {}}
+        onCancel={() => { 
+          // Cancel editing via formula bar -> close edit mode
+          cancelEdit();
+        }}
+        onFocus={() => {
+          // When formula bar is focused, enter edit mode for the selected cell so both inputs sync
+          if (selectedCell && !editingCell) {
+            const cell = getCellData(selectedCell.row, selectedCell.col);
+            setEditingCell({ row: selectedCell.row, col: selectedCell.col });
+            setEditValue(cell?.formula ?? String(cell?.value ?? ''));
+          }
+        }}
+        onChange={(v) => {
+          // Live-update the editing value when user types in the formula bar
+          if (editingCell) {
+            setEditValue(v);
+          }
+        }}
         readOnly={!editingCell && !selectedCell}
       />
 
@@ -264,7 +361,7 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
                 const isEditing =
                   editingCell?.row === virtualRow.index &&
                   editingCell?.col === virtualCol.index;
-                const cell = data[virtualRow.index][virtualCol.index];
+                const cell = getCellData(virtualRow.index, virtualCol.index);
 
                 return (
                   <div
@@ -293,12 +390,15 @@ export function CanvasRenderer({ data, onCellEdit }: CanvasRendererProps) {
                         onChange={(e) => setEditValue(e.target.value)}
                         onBlur={commitEdit}
                         onKeyDown={handleKeyDown}
+                        onFocus={() => setIsStartingEdit(false)}
                         className="w-full h-full px-1 border-none outline-none bg-transparent"
                         autoFocus
                       />
                     ) : (
                       <span className="truncate">
-                        {cell.formula || cell.value || ''}
+                        {cell?.value !== null && cell?.value !== undefined 
+                          ? String(cell?.value ?? '') 
+                          : (cell?.formula ?? '')}
                       </span>
                     )}
                   </div>
