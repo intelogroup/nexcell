@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-10-19T21:57:41.136Z",
+  "model": "openai/gpt-4",
+  "totalTests": 10,
+  "passed": 10,
+  "failed": 0,
+  "successRate": 100,
+  "avgDuration": 771.3,
+  "totalTokens": 3488,
+  "results": [
+    {
+      "scenario": "simple-value",
+      "passed": true,
+      "duration": 1696,
+      "tokens": 290,
+      "actionCount": 1
+    },
+    {
+      "scenario": "formula",
+      "passed": true,
+      "duration": 613,
+      "tokens": 302,
+      "actionCount": 1
+    },
+    {
+      "scenario": "fill-range",
+      "passed": true,
+      "duration": 721,
+      "tokens": 323,
+      "actionCount": 1
+    },
+    {
+      "scenario": "budget-table",
+      "passed": true,
+      "duration": 634,
+      "tokens": 388,
+      "actionCount": 4
+    },
+    {
+      "scenario": "sales-dashboard",
+      "passed": true,
+      "duration": 964,
+      "tokens": 438,
+      "actionCount": 8
+    },
+    {
+      "scenario": "clear-range",
+      "passed": true,
+      "duration": 702,
+      "tokens": 291,
+      "actionCount": 1
+    },
+    {
+      "scenario": "dates",
+      "passed": true,
+      "duration": 518,
+      "tokens": 316,
+      "actionCount": 2
+    },
+    {
+      "scenario": "large-dataset",
+      "passed": true,
+      "duration": 709,
+      "tokens": 383,
+      "actionCount": 1
+    },
+    {
+      "scenario": "ambiguous-prompt",
+      "passed": true,
+      "duration": 516,
+      "tokens": 293,
+      "actionCount": 0
+    },
+    {
+      "scenario": "complex-workflow",
+      "passed": true,
+      "duration": 640,
+      "tokens": 464,
+      "actionCount": 3
+    }
+  ]
+}

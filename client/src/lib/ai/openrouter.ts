@@ -73,7 +73,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
       'X-Title': 'Nexcell',
     },
     body: JSON.stringify({
-      model: import.meta.env.VITE_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet',
+      model: import.meta.env.VITE_OPENROUTER_MODEL || 'openai/gpt-4',
       temperature: 0.3,
       max_tokens: parseInt(import.meta.env.VITE_OPENROUTER_MAX_TOKENS || '2000'),
       messages: [
@@ -370,8 +370,11 @@ export function convertToWorkbookActions(
       }
 
       case 'fillRange': {
-        if (action.range && action.values) {
-          const { start, end } = action.range;
+        // Support both action.target and action.range for flexibility
+        const rangeObj = action.target || action.range;
+        
+        if (rangeObj && typeof rangeObj === 'object' && action.values) {
+          const { start, end } = rangeObj;
           const startPos = parseAddress(start);
           const endPos = end ? parseAddress(end) : startPos;
           
@@ -381,8 +384,10 @@ export function convertToWorkbookActions(
           if (isSingleColumn) {
             // values is a 1D array for single column
             action.values.forEach((value: any, r: number) => {
+              // Handle both flat values and arrays with single element
+              const actualValue = Array.isArray(value) ? value[0] : value;
               const address = toAddress(startPos.row + r, startPos.col);
-              operations.push({ address, cell: cellFromValue(value) });
+              operations.push({ address, cell: cellFromValue(actualValue) });
             });
           } else {
             // values is a 2D array for multi-column ranges
@@ -395,8 +400,8 @@ export function convertToWorkbookActions(
               }
             });
           }
-        } else if (action.range && (action.value !== undefined || action.formula)) {
-          const { start, end } = action.range;
+        } else if (rangeObj && typeof rangeObj === 'object' && (action.value !== undefined || action.formula)) {
+          const { start, end } = rangeObj;
           const startPos = parseAddress(start);
           const endPos = parseAddress(end);
           
@@ -420,8 +425,29 @@ export function convertToWorkbookActions(
       }
 
       case 'setRange': {
-        // Allow assistant to provide a mapping of addresses to raw values or cell objects
-        if (action.cells && typeof action.cells === 'object') {
+        // Support both formats: cells object or range with values array
+        if (action.range && action.values) {
+          // Handle range with 2D values array (same as fillRange)
+          const { start } = action.range;
+          const startPos = parseAddress(start);
+          
+          // values is a 2D array
+          if (Array.isArray(action.values)) {
+            action.values.forEach((row: any[], r: number) => {
+              if (Array.isArray(row)) {
+                row.forEach((value: any, c: number) => {
+                  const address = toAddress(startPos.row + r, startPos.col + c);
+                  operations.push({ address, cell: cellFromValue(value) });
+                });
+              } else {
+                // Single value in this "row"
+                const address = toAddress(startPos.row + r, startPos.col);
+                operations.push({ address, cell: cellFromValue(row) });
+              }
+            });
+          }
+        } else if (action.cells && typeof action.cells === 'object') {
+          // Allow assistant to provide a mapping of addresses to raw values or cell objects
           for (const [addr, value] of Object.entries(action.cells)) {
             if (value && typeof value === 'object' && ('raw' in value || 'formula' in value || 'dataType' in value)) {
               // Assume value is already a partial Cell
@@ -462,8 +488,10 @@ export function convertToWorkbookActions(
         break;
       }
       case 'clearRange': {
-        if (action.range) {
-          const { start, end } = action.range;
+        // Support both action.range and action.target (AI may use either)
+        const rangeObj = action.range || action.target;
+        if (rangeObj && typeof rangeObj === 'object' && 'start' in rangeObj && 'end' in rangeObj) {
+          const { start, end } = rangeObj;
           const startPos = parseAddress(start);
           const endPos = parseAddress(end);
           
