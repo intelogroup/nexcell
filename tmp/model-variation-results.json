@@ -1,0 +1,1010 @@
+{
+  "results": [
+    {
+      "scenario": "Simple Cell Value",
+      "prompt": "Set cell A1 to \"Revenue\" and B1 to 50000",
+      "modelResults": [
+        {
+          "model": "Claude 3.5 Sonnet",
+          "modelId": "anthropic/claude-3.5-sonnet",
+          "success": true,
+          "passed": true,
+          "apiTime": 1388,
+          "tokens": 380,
+          "actionCount": 2,
+          "actionTypes": [
+            "setCellValue"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 1,
+          "reasoning": "Simple request to set two specific cell values - one text and one number",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": "Revenue"
+            },
+            {
+              "action": "setCellValue",
+              "target": "B1",
+              "value": 50000
+            }
+          ]
+        },
+        {
+          "model": "GPT-4",
+          "modelId": "openai/gpt-4",
+          "success": true,
+          "passed": true,
+          "apiTime": 832,
+          "tokens": 340,
+          "actionCount": 2,
+          "actionTypes": [
+            "setCellValue"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The request is to set specific values to cells A1 and B1.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": "Revenue"
+            },
+            {
+              "action": "setCellValue",
+              "target": "B1",
+              "value": 50000
+            }
+          ]
+        },
+        {
+          "model": "GPT-3.5 Turbo",
+          "modelId": "openai/gpt-3.5-turbo",
+          "success": true,
+          "passed": true,
+          "apiTime": 438,
+          "tokens": 324,
+          "actionCount": 2,
+          "actionTypes": [
+            "setCellValue"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user requested to set specific values in cells A1 and B1.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": "Revenue"
+            },
+            {
+              "action": "setCellValue",
+              "target": "B1",
+              "value": 50000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "Formula Creation",
+      "prompt": "In A1 put \"Price\", A2 put 100. In B1 put \"Tax Rate\", B2 put 0.08. In C1 put \"Total\", C2 calculate price plus tax",
+      "modelResults": [
+        {
+          "model": "Claude 3.5 Sonnet",
+          "modelId": "anthropic/claude-3.5-sonnet",
+          "success": true,
+          "passed": true,
+          "apiTime": 543,
+          "tokens": 572,
+          "actionCount": 6,
+          "actionTypes": [
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "confidence": 0.98,
+          "reasoning": "Setting up a simple price calculation with tax. Headers in row 1, values in row 2, with a formula to calculate total price including tax in C2.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": "Price"
+            },
+            {
+              "action": "setCellValue",
+              "target": "A2",
+              "value": 100
+            },
+            {
+              "action": "setCellValue",
+              "target": "B1",
+              "value": "Tax Rate"
+            },
+            {
+              "action": "setCellValue",
+              "target": "B2",
+              "value": 0.08
+            },
+            {
+              "action": "setCellValue",
+              "target": "C1",
+              "value": "Total"
+            },
+            {
+              "action": "setCellFormula",
+              "target": "C2",
+              "formula": "=A2*(1+B2)"
+            }
+          ]
+        },
+        {
+          "model": "GPT-4",
+          "modelId": "openai/gpt-4",
+          "success": true,
+          "passed": true,
+          "apiTime": 653,
+          "tokens": 485,
+          "actionCount": 6,
+          "actionTypes": [
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Added labels to cells A1, B1, and C1. Set the price and tax rate in A2 and B2 respectively. The total amount in C2 is calculated using the formula which adds the price and the product of price and tax rate.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": "Price"
+            },
+            {
+              "action": "setCellValue",
+              "target": "A2",
+              "value": 100
+            },
+            {
+              "action": "setCellValue",
+              "target": "B1",
+              "value": "Tax Rate"
+            },
+            {
+              "action": "setCellValue",
+              "target": "B2",
+              "value": 0.08
+            },
+            {
+              "action": "setCellValue",
+              "target": "C1",
+              "value": "Total"
+            },
+            {
+              "action": "setCellFormula",
+              "target": "C2",
+              "formula": "=A2+(A2*B2)"
+            }
+          ]
+        },
+        {
+          "model": "GPT-3.5 Turbo",
+          "modelId": "openai/gpt-3.5-turbo",
+          "success": true,
+          "passed": true,
+          "apiTime": 434,
+          "tokens": 454,
+          "actionCount": 6,
+          "actionTypes": [
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user requested to set values for price, tax rate, and calculate the total based on the formula provided.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": "Price"
+            },
+            {
+              "action": "setCellValue",
+              "target": "A2",
+              "value": 100
+            },
+            {
+              "action": "setCellValue",
+              "target": "B1",
+              "value": "Tax Rate"
+            },
+            {
+              "action": "setCellValue",
+              "target": "B2",
+              "value": 0.08
+            },
+            {
+              "action": "setCellValue",
+              "target": "C1",
+              "value": "Total"
+            },
+            {
+              "action": "setCellFormula",
+              "target": "C2",
+              "formula": "=A2+B2*A2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "Range Fill",
+      "prompt": "Create a simple expense tracker with headers in row 1: Item, Amount, Date. Fill rows 2-4 with sample data",
+      "modelResults": [
+        {
+          "model": "Claude 3.5 Sonnet",
+          "modelId": "anthropic/claude-3.5-sonnet",
+          "success": true,
+          "passed": true,
+          "apiTime": 1257,
+          "tokens": 479,
+          "actionCount": 2,
+          "actionTypes": [
+            "fillRow",
+            "setRange"
+          ],
+          "allActionTypes": [
+            "fillRow",
+            "setRange"
+          ],
+          "confidence": 0.98,
+          "reasoning": "Creating a basic expense tracker with headers in row 1 and sample data in rows 2-4. Using fillRow for headers and setRange for sample data to efficiently set multiple cells at once.",
+          "hasExpectedActions": true,
+          "correctCount": false,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "fillRow",
+              "row": 1,
+              "values": [
+                "Item",
+                "Amount",
+                "Date"
+              ]
+            },
+            {
+              "action": "setRange",
+              "range": "A2:C4",
+              "values": [
+                [
+                  "Groceries",
+                  85.5,
+                  "2024-01-15"
+                ],
+                [
+                  "Gas",
+                  45,
+                  "2024-01-16"
+                ],
+                [
+                  "Coffee",
+                  4.75,
+                  "2024-01-17"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "model": "GPT-4",
+          "modelId": "openai/gpt-4",
+          "success": true,
+          "passed": true,
+          "apiTime": 536,
+          "tokens": 396,
+          "actionCount": 2,
+          "actionTypes": [
+            "fillRow",
+            "setRange"
+          ],
+          "allActionTypes": [
+            "fillRow",
+            "setRange"
+          ],
+          "confidence": 0.95,
+          "reasoning": "First, we set the headers in row 1. Then, we fill in rows 2 to 4 with sample data for the expense tracker.",
+          "hasExpectedActions": true,
+          "correctCount": false,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "fillRow",
+              "row": 1,
+              "values": [
+                "Item",
+                "Amount",
+                "Date"
+              ]
+            },
+            {
+              "action": "setRange",
+              "range": "A2:C4",
+              "values": [
+                [
+                  "Groceries",
+                  50,
+                  "01/01/2022"
+                ],
+                [
+                  "Fuel",
+                  30,
+                  "01/02/2022"
+                ],
+                [
+                  "Rent",
+                  500,
+                  "01/03/2022"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "model": "GPT-3.5 Turbo",
+          "modelId": "openai/gpt-3.5-turbo",
+          "success": true,
+          "passed": true,
+          "apiTime": 755,
+          "tokens": 392,
+          "actionCount": 2,
+          "actionTypes": [
+            "fillRow",
+            "fillRange"
+          ],
+          "allActionTypes": [
+            "fillRow",
+            "fillRange"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user requested to create an expense tracker with headers and fill sample data in rows 2-4.",
+          "hasExpectedActions": true,
+          "correctCount": false,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "fillRow",
+              "row": 1,
+              "values": [
+                "Item",
+                "Amount",
+                "Date"
+              ]
+            },
+            {
+              "action": "fillRange",
+              "range": "A2:C4",
+              "values": [
+                [
+                  "Groceries",
+                  50,
+                  "2022-10-01"
+                ],
+                [
+                  "Gas",
+                  30,
+                  "2022-10-02"
+                ],
+                [
+                  "Dinner",
+                  40,
+                  "2022-10-03"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "Aggregation Formula",
+      "prompt": "Put numbers 10, 20, 30, 40, 50 in cells A1 through A5. Calculate the total in A6",
+      "modelResults": [
+        {
+          "model": "Claude 3.5 Sonnet",
+          "modelId": "anthropic/claude-3.5-sonnet",
+          "success": true,
+          "passed": true,
+          "apiTime": 549,
+          "tokens": 422,
+          "actionCount": 2,
+          "actionTypes": [
+            "setRange",
+            "setCellFormula"
+          ],
+          "allActionTypes": [
+            "setRange",
+            "setCellFormula"
+          ],
+          "confidence": 0.99,
+          "reasoning": "Setting 5 sequential values in column A and adding a sum formula in A6 to calculate their total",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setRange",
+              "range": "A1:A5",
+              "values": [
+                [
+                  10
+                ],
+                [
+                  20
+                ],
+                [
+                  30
+                ],
+                [
+                  40
+                ],
+                [
+                  50
+                ]
+              ]
+            },
+            {
+              "action": "setCellFormula",
+              "target": "A6",
+              "formula": "=SUM(A1:A5)"
+            }
+          ]
+        },
+        {
+          "model": "GPT-4",
+          "modelId": "openai/gpt-4",
+          "success": true,
+          "passed": true,
+          "apiTime": 719,
+          "tokens": 432,
+          "actionCount": 6,
+          "actionTypes": [
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "allActionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Numbers are set in cells A1 through A5 and the total is calculated in A6.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setCellValue",
+              "target": "A1",
+              "value": 10
+            },
+            {
+              "action": "setCellValue",
+              "target": "A2",
+              "value": 20
+            },
+            {
+              "action": "setCellValue",
+              "target": "A3",
+              "value": 30
+            },
+            {
+              "action": "setCellValue",
+              "target": "A4",
+              "value": 40
+            },
+            {
+              "action": "setCellValue",
+              "target": "A5",
+              "value": 50
+            },
+            {
+              "action": "setCellFormula",
+              "target": "A6",
+              "formula": "=SUM(A1:A5)"
+            }
+          ]
+        },
+        {
+          "model": "GPT-3.5 Turbo",
+          "modelId": "openai/gpt-3.5-turbo",
+          "success": true,
+          "passed": true,
+          "apiTime": 438,
+          "tokens": 362,
+          "actionCount": 2,
+          "actionTypes": [
+            "setRange",
+            "setCellFormula"
+          ],
+          "allActionTypes": [
+            "setRange",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user requested to put numbers in cells A1 through A5 and calculate the total in A6.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setRange",
+              "range": "A1:A5",
+              "values": [
+                [
+                  10
+                ],
+                [
+                  20
+                ],
+                [
+                  30
+                ],
+                [
+                  40
+                ],
+                [
+                  50
+                ]
+              ]
+            },
+            {
+              "action": "setCellFormula",
+              "target": "A6",
+              "formula": "=SUM(A1:A5)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "Multi-Column Data",
+      "prompt": "Create a product inventory with Name in A1-A3 (Widget, Gadget, Tool), Quantity in B1-B3 (100, 50, 75), Price in C1-C3 (10, 20, 15)",
+      "modelResults": [
+        {
+          "model": "Claude 3.5 Sonnet",
+          "modelId": "anthropic/claude-3.5-sonnet",
+          "success": true,
+          "passed": false,
+          "apiTime": 1460,
+          "tokens": 482,
+          "actionCount": 3,
+          "actionTypes": [
+            "fillRow"
+          ],
+          "allActionTypes": [
+            "fillRow",
+            "fillRow",
+            "fillRow"
+          ],
+          "confidence": 0.98,
+          "reasoning": "Creating a 3-row inventory table using fillRow actions to populate product names, quantities and prices in columns A, B and C respectively",
+          "hasExpectedActions": false,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "fillRow",
+              "row": 1,
+              "values": [
+                "Widget",
+                100,
+                10
+              ]
+            },
+            {
+              "action": "fillRow",
+              "row": 2,
+              "values": [
+                "Gadget",
+                50,
+                20
+              ]
+            },
+            {
+              "action": "fillRow",
+              "row": 3,
+              "values": [
+                "Tool",
+                75,
+                15
+              ]
+            }
+          ]
+        },
+        {
+          "model": "GPT-4",
+          "modelId": "openai/gpt-4",
+          "success": true,
+          "passed": true,
+          "apiTime": 537,
+          "tokens": 400,
+          "actionCount": 3,
+          "actionTypes": [
+            "setRange"
+          ],
+          "allActionTypes": [
+            "setRange",
+            "setRange",
+            "setRange"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Setting the ranges for product names, quantities, and prices respectively.",
+          "hasExpectedActions": true,
+          "correctCount": true,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setRange",
+              "range": "A1:A3",
+              "values": [
+                [
+                  "Widget"
+                ],
+                [
+                  "Gadget"
+                ],
+                [
+                  "Tool"
+                ]
+              ]
+            },
+            {
+              "action": "setRange",
+              "range": "B1:B3",
+              "values": [
+                [
+                  100
+                ],
+                [
+                  50
+                ],
+                [
+                  75
+                ]
+              ]
+            },
+            {
+              "action": "setRange",
+              "range": "C1:C3",
+              "values": [
+                [
+                  10
+                ],
+                [
+                  20
+                ],
+                [
+                  15
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "model": "GPT-3.5 Turbo",
+          "modelId": "openai/gpt-3.5-turbo",
+          "success": true,
+          "passed": true,
+          "apiTime": 451,
+          "tokens": 359,
+          "actionCount": 1,
+          "actionTypes": [
+            "setRange"
+          ],
+          "allActionTypes": [
+            "setRange"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Setting the product inventory data in the specified ranges.",
+          "hasExpectedActions": true,
+          "correctCount": false,
+          "allValidActions": true,
+          "actions": [
+            {
+              "action": "setRange",
+              "range": "A1:C3",
+              "values": [
+                [
+                  "Widget",
+                  "Gadget",
+                  "Tool"
+                ],
+                [
+                  100,
+                  50,
+                  75
+                ],
+                [
+                  10,
+                  20,
+                  15
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "models": {
+      "Claude 3.5 Sonnet": {
+        "modelId": "anthropic/claude-3.5-sonnet",
+        "totalTests": 5,
+        "passed": 4,
+        "failed": 1,
+        "errors": 0,
+        "totalTime": 5197,
+        "totalTokens": 2335,
+        "avgTime": 1039,
+        "avgTokens": 467,
+        "avgConfidence": 0.986,
+        "avgActionCount": 3,
+        "actionTypeDistribution": {
+          "setCellValue": 7,
+          "setCellFormula": 2,
+          "fillRow": 4,
+          "setRange": 2
+        },
+        "confidenceScores": [
+          1,
+          0.98,
+          0.98,
+          0.99,
+          0.98
+        ],
+        "passRate": "80.0"
+      },
+      "GPT-4": {
+        "modelId": "openai/gpt-4",
+        "totalTests": 5,
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "totalTime": 3277,
+        "totalTokens": 2053,
+        "avgTime": 655,
+        "avgTokens": 411,
+        "avgConfidence": 0.95,
+        "avgActionCount": 3.8,
+        "actionTypeDistribution": {
+          "setCellValue": 12,
+          "setCellFormula": 2,
+          "fillRow": 1,
+          "setRange": 4
+        },
+        "confidenceScores": [
+          0.95,
+          0.95,
+          0.95,
+          0.95,
+          0.95
+        ],
+        "passRate": "100.0"
+      },
+      "GPT-3.5 Turbo": {
+        "modelId": "openai/gpt-3.5-turbo",
+        "totalTests": 5,
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "totalTime": 2516,
+        "totalTokens": 1891,
+        "avgTime": 503,
+        "avgTokens": 378,
+        "avgConfidence": 0.95,
+        "avgActionCount": 2.6,
+        "actionTypeDistribution": {
+          "setCellValue": 7,
+          "setCellFormula": 2,
+          "fillRow": 1,
+          "fillRange": 1,
+          "setRange": 2
+        },
+        "confidenceScores": [
+          0.95,
+          0.95,
+          0.95,
+          0.95,
+          0.95
+        ],
+        "passRate": "100.0"
+      }
+    },
+    "scenarios": {
+      "Simple Cell Value": {
+        "modelComparison": {
+          "Claude 3.5 Sonnet": {
+            "passed": true,
+            "apiTime": 1388,
+            "tokens": 380,
+            "actionCount": 2,
+            "confidence": 1
+          },
+          "GPT-4": {
+            "passed": true,
+            "apiTime": 832,
+            "tokens": 340,
+            "actionCount": 2,
+            "confidence": 0.95
+          },
+          "GPT-3.5 Turbo": {
+            "passed": true,
+            "apiTime": 438,
+            "tokens": 324,
+            "actionCount": 2,
+            "confidence": 0.95
+          }
+        }
+      },
+      "Formula Creation": {
+        "modelComparison": {
+          "Claude 3.5 Sonnet": {
+            "passed": true,
+            "apiTime": 543,
+            "tokens": 572,
+            "actionCount": 6,
+            "confidence": 0.98
+          },
+          "GPT-4": {
+            "passed": true,
+            "apiTime": 653,
+            "tokens": 485,
+            "actionCount": 6,
+            "confidence": 0.95
+          },
+          "GPT-3.5 Turbo": {
+            "passed": true,
+            "apiTime": 434,
+            "tokens": 454,
+            "actionCount": 6,
+            "confidence": 0.95
+          }
+        }
+      },
+      "Range Fill": {
+        "modelComparison": {
+          "Claude 3.5 Sonnet": {
+            "passed": true,
+            "apiTime": 1257,
+            "tokens": 479,
+            "actionCount": 2,
+            "confidence": 0.98
+          },
+          "GPT-4": {
+            "passed": true,
+            "apiTime": 536,
+            "tokens": 396,
+            "actionCount": 2,
+            "confidence": 0.95
+          },
+          "GPT-3.5 Turbo": {
+            "passed": true,
+            "apiTime": 755,
+            "tokens": 392,
+            "actionCount": 2,
+            "confidence": 0.95
+          }
+        }
+      },
+      "Aggregation Formula": {
+        "modelComparison": {
+          "Claude 3.5 Sonnet": {
+            "passed": true,
+            "apiTime": 549,
+            "tokens": 422,
+            "actionCount": 2,
+            "confidence": 0.99
+          },
+          "GPT-4": {
+            "passed": true,
+            "apiTime": 719,
+            "tokens": 432,
+            "actionCount": 6,
+            "confidence": 0.95
+          },
+          "GPT-3.5 Turbo": {
+            "passed": true,
+            "apiTime": 438,
+            "tokens": 362,
+            "actionCount": 2,
+            "confidence": 0.95
+          }
+        }
+      },
+      "Multi-Column Data": {
+        "modelComparison": {
+          "Claude 3.5 Sonnet": {
+            "passed": false,
+            "apiTime": 1460,
+            "tokens": 482,
+            "actionCount": 3,
+            "confidence": 0.98
+          },
+          "GPT-4": {
+            "passed": true,
+            "apiTime": 537,
+            "tokens": 400,
+            "actionCount": 3,
+            "confidence": 0.95
+          },
+          "GPT-3.5 Turbo": {
+            "passed": true,
+            "apiTime": 451,
+            "tokens": 359,
+            "actionCount": 1,
+            "confidence": 0.95
+          }
+        }
+      }
+    },
+    "overall": {
+      "totalTests": 15,
+      "totalPassed": 14,
+      "totalFailed": 1,
+      "totalErrors": 0,
+      "passRate": "93.3"
+    }
+  }
+}
