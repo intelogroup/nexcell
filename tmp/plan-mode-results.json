@@ -1,0 +1,700 @@
+{
+  "results": [
+    {
+      "scenario": "Financial Dashboard (5 steps)",
+      "description": "Multi-step workflow to create a complete financial dashboard",
+      "totalSteps": 5,
+      "totalActions": 20,
+      "totalApiTime": 3477,
+      "totalTokens": 2022,
+      "avgTimePerStep": 695,
+      "avgActionsPerStep": "4.0",
+      "executionTime": 0,
+      "operationsExecuted": 20,
+      "planningToExecutionRatio": "Infinity",
+      "allStepsSuccessful": true,
+      "stepResults": [
+        {
+          "stepNumber": 1,
+          "success": true,
+          "prompt": "Create headers in row 1: Month, Revenue, Expenses, Profit, Margin%",
+          "actionCount": 5,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Setting the values of the first row cells to create headers",
+          "apiTime": 1287,
+          "tokens": 390
+        },
+        {
+          "stepNumber": 2,
+          "success": true,
+          "prompt": "Fill sample data for January to March in rows 2-4: Jan (50000, 30000), Feb (55000, 32000), Mar (60000, 35000)",
+          "actionCount": 6,
+          "actionTypes": [
+            "setRange",
+            "setRange",
+            "setRange",
+            "setRange",
+            "setRange",
+            "setRange"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The request is to fill in the rows 2-4 with sample data for January to March. Each month's data is split into two cells in the same row.",
+          "apiTime": 490,
+          "tokens": 496
+        },
+        {
+          "stepNumber": 3,
+          "success": true,
+          "prompt": "Add profit formulas in D2:D4 (Revenue - Expenses)",
+          "actionCount": 3,
+          "actionTypes": [
+            "setCellFormula",
+            "setCellFormula",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Set profit formulas in cells D2, D3, D4 as the difference between respective revenue and expenses.",
+          "apiTime": 659,
+          "tokens": 366
+        },
+        {
+          "stepNumber": 4,
+          "success": true,
+          "prompt": "Add margin% formulas in E2:E4 (Profit / Revenue * 100)",
+          "actionCount": 3,
+          "actionTypes": [
+            "setCellFormula",
+            "setCellFormula",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to add a margin% formula in cells E2, E3, and E4.",
+          "apiTime": 490,
+          "tokens": 381
+        },
+        {
+          "stepNumber": 5,
+          "success": true,
+          "prompt": "Add totals row in row 5 with SUM formulas for Revenue, Expenses, Profit",
+          "actionCount": 3,
+          "actionTypes": [
+            "setCellFormula",
+            "setCellFormula",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Assuming 'Revenue' is column A, 'Expenses' is column B, and 'Profit' is column C. The SUM formulas are set to total the values in the rows above.",
+          "apiTime": 551,
+          "tokens": 389
+        }
+      ],
+      "summary": {
+        "planSteps": 5,
+        "accumulatedActions": 20,
+        "executedOperations": 20,
+        "planningPhase": false,
+        "steps": [
+          {
+            "step": 1,
+            "prompt": "Create headers in row 1: Month, Revenue, Expenses, Profit, Margin%",
+            "actionCount": 5,
+            "reasoning": "Setting the values of the first row cells to create headers"
+          },
+          {
+            "step": 2,
+            "prompt": "Fill sample data for January to March in rows 2-4: Jan (50000, 30000), Feb (55000, 32000), Mar (60000, 35000)",
+            "actionCount": 6,
+            "reasoning": "The request is to fill in the rows 2-4 with sample data for January to March. Each month's data is split into two cells in the same row."
+          },
+          {
+            "step": 3,
+            "prompt": "Add profit formulas in D2:D4 (Revenue - Expenses)",
+            "actionCount": 3,
+            "reasoning": "Set profit formulas in cells D2, D3, D4 as the difference between respective revenue and expenses."
+          },
+          {
+            "step": 4,
+            "prompt": "Add margin% formulas in E2:E4 (Profit / Revenue * 100)",
+            "actionCount": 3,
+            "reasoning": "The user wants to add a margin% formula in cells E2, E3, and E4."
+          },
+          {
+            "step": 5,
+            "prompt": "Add totals row in row 5 with SUM formulas for Revenue, Expenses, Profit",
+            "actionCount": 3,
+            "reasoning": "Assuming 'Revenue' is column A, 'Expenses' is column B, and 'Profit' is column C. The SUM formulas are set to total the values in the rows above."
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "Employee Database (4 steps)",
+      "description": "Build an employee tracking system step by step",
+      "totalSteps": 4,
+      "totalActions": 22,
+      "totalApiTime": 2829,
+      "totalTokens": 1803,
+      "avgTimePerStep": 707,
+      "avgActionsPerStep": "5.5",
+      "executionTime": 0,
+      "operationsExecuted": 22,
+      "planningToExecutionRatio": "Infinity",
+      "allStepsSuccessful": true,
+      "stepResults": [
+        {
+          "stepNumber": 1,
+          "success": true,
+          "prompt": "Setup headers: Name, Department, Salary, Start Date, Status",
+          "actionCount": 5,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to set up headers for a spreadsheet. Each requested header is set in a different cell in the first row.",
+          "apiTime": 646,
+          "tokens": 399
+        },
+        {
+          "stepNumber": 2,
+          "success": true,
+          "prompt": "Add 3 employees: Alice (Engineering, 95000, 2023-01-15, Active), Bob (Sales, 75000, 2023-03-20, Active), Carol (HR, 68000, 2022-11-10, Active)",
+          "actionCount": 15,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Adding new employees to the sheet as per the user's request.",
+          "apiTime": 651,
+          "tokens": 787
+        },
+        {
+          "stepNumber": 3,
+          "success": true,
+          "prompt": "Calculate average salary in B7",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Calculated average of the range B1:B6 and set it to B7",
+          "apiTime": 769,
+          "tokens": 310
+        },
+        {
+          "stepNumber": 4,
+          "success": true,
+          "prompt": "Count active employees in B8",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "This action will set the formula to count non-empty cells in column B, which is assumed to represent the active employees.",
+          "apiTime": 763,
+          "tokens": 307
+        }
+      ],
+      "summary": {
+        "planSteps": 4,
+        "accumulatedActions": 22,
+        "executedOperations": 22,
+        "planningPhase": false,
+        "steps": [
+          {
+            "step": 1,
+            "prompt": "Setup headers: Name, Department, Salary, Start Date, Status",
+            "actionCount": 5,
+            "reasoning": "The user wants to set up headers for a spreadsheet. Each requested header is set in a different cell in the first row."
+          },
+          {
+            "step": 2,
+            "prompt": "Add 3 employees: Alice (Engineering, 95000, 2023-01-15, Active), Bob (Sales, 75000, 2023-03-20, Active), Carol (HR, 68000, 2022-11-10, Active)",
+            "actionCount": 15,
+            "reasoning": "Adding new employees to the sheet as per the user's request."
+          },
+          {
+            "step": 3,
+            "prompt": "Calculate average salary in B7",
+            "actionCount": 1,
+            "reasoning": "Calculated average of the range B1:B6 and set it to B7"
+          },
+          {
+            "step": 4,
+            "prompt": "Count active employees in B8",
+            "actionCount": 1,
+            "reasoning": "This action will set the formula to count non-empty cells in column B, which is assumed to represent the active employees."
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "Inventory Tracker (6 steps)",
+      "description": "Complex inventory management system",
+      "totalSteps": 5,
+      "totalActions": 23,
+      "totalApiTime": 3385,
+      "totalTokens": 2069,
+      "avgTimePerStep": 677,
+      "avgActionsPerStep": "4.6",
+      "executionTime": 0,
+      "operationsExecuted": 23,
+      "planningToExecutionRatio": "Infinity",
+      "allStepsSuccessful": false,
+      "stepResults": [
+        {
+          "stepNumber": 1,
+          "success": true,
+          "prompt": "Headers: Item, SKU, Quantity, Unit Price, Total Value, Reorder Level",
+          "actionCount": 6,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user is requesting to set the headers of a spreadsheet. Each header is set in a different cell starting from A1 to F1.",
+          "apiTime": 779,
+          "tokens": 431
+        },
+        {
+          "stepNumber": 2,
+          "success": true,
+          "prompt": "Add products: Widget (W-001, 150, 25), Gadget (G-002, 80, 45), Tool (T-003, 200, 15)",
+          "actionCount": 12,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Added the products 'Widget', 'Gadget', and 'Tool' with their respective codes, prices, and quantities to the spreadsheet.",
+          "apiTime": 829,
+          "tokens": 582
+        },
+        {
+          "stepNumber": 3,
+          "success": true,
+          "prompt": "Calculate Total Value for each product (Quantity * Unit Price)",
+          "actionCount": 3,
+          "actionTypes": [
+            "setCellFormula",
+            "setCellFormula",
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "These actions calculate the total value for each product by multiplying the quantity by the unit price. Each product's total is stored in a separate cell in column D.",
+          "apiTime": 549,
+          "tokens": 399
+        },
+        {
+          "stepNumber": 4,
+          "success": false,
+          "error": "Expected property name or '}' in JSON at position 24 (line 3 column 7)",
+          "apiTime": 7384
+        },
+        {
+          "stepNumber": 5,
+          "success": true,
+          "prompt": "Add total inventory value in E6",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Given the request to calculate the total inventory value, I have set a formula in cell E6 to add up the values in cells E1 through E5. This assumes the inventory values are in cells E1 through E5.",
+          "apiTime": 684,
+          "tokens": 331
+        },
+        {
+          "stepNumber": 6,
+          "success": true,
+          "prompt": "Add low stock warning count in E7 (items below reorder level)",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to set a label for E7 as 'Low stock warning count (items below reorder level)'.",
+          "apiTime": 544,
+          "tokens": 326
+        }
+      ],
+      "summary": {
+        "planSteps": 5,
+        "accumulatedActions": 23,
+        "executedOperations": 23,
+        "planningPhase": false,
+        "steps": [
+          {
+            "step": 1,
+            "prompt": "Headers: Item, SKU, Quantity, Unit Price, Total Value, Reorder Level",
+            "actionCount": 6,
+            "reasoning": "The user is requesting to set the headers of a spreadsheet. Each header is set in a different cell starting from A1 to F1."
+          },
+          {
+            "step": 2,
+            "prompt": "Add products: Widget (W-001, 150, 25), Gadget (G-002, 80, 45), Tool (T-003, 200, 15)",
+            "actionCount": 12,
+            "reasoning": "Added the products 'Widget', 'Gadget', and 'Tool' with their respective codes, prices, and quantities to the spreadsheet."
+          },
+          {
+            "step": 3,
+            "prompt": "Calculate Total Value for each product (Quantity * Unit Price)",
+            "actionCount": 3,
+            "reasoning": "These actions calculate the total value for each product by multiplying the quantity by the unit price. Each product's total is stored in a separate cell in column D."
+          },
+          {
+            "step": 4,
+            "prompt": "Add total inventory value in E6",
+            "actionCount": 1,
+            "reasoning": "Given the request to calculate the total inventory value, I have set a formula in cell E6 to add up the values in cells E1 through E5. This assumes the inventory values are in cells E1 through E5."
+          },
+          {
+            "step": 5,
+            "prompt": "Add low stock warning count in E7 (items below reorder level)",
+            "actionCount": 1,
+            "reasoning": "The user wants to set a label for E7 as 'Low stock warning count (items below reorder level)'."
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "Sales Pipeline (7 steps)",
+      "description": "Comprehensive sales tracking workflow",
+      "totalSteps": 7,
+      "totalActions": 34,
+      "totalApiTime": 5046,
+      "totalTokens": 2856,
+      "avgTimePerStep": 721,
+      "avgActionsPerStep": "4.9",
+      "executionTime": 0,
+      "operationsExecuted": 34,
+      "planningToExecutionRatio": "Infinity",
+      "allStepsSuccessful": true,
+      "stepResults": [
+        {
+          "stepNumber": 1,
+          "success": true,
+          "prompt": "Create pipeline stages: Lead, Qualified, Proposal, Negotiation, Closed Won, Closed Lost",
+          "actionCount": 6,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Created pipeline stages in cells A1 to A6",
+          "apiTime": 563,
+          "tokens": 416
+        },
+        {
+          "stepNumber": 2,
+          "success": true,
+          "prompt": "Add count row headers in A2:F2",
+          "actionCount": 1,
+          "actionTypes": [
+            "fillRow"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to add row headers that count from 1 to 6 in cells A2 through F2.",
+          "apiTime": 751,
+          "tokens": 323
+        },
+        {
+          "stepNumber": 3,
+          "success": true,
+          "prompt": "Add sample counts: Lead 45, Qualified 28, Proposal 15, Negotiation 8, Closed Won 12, Closed Lost 5",
+          "actionCount": 12,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Setting each cell value as per the user request",
+          "apiTime": 638,
+          "tokens": 552
+        },
+        {
+          "stepNumber": 4,
+          "success": true,
+          "prompt": "Add value row headers in A3:F3 for deal values",
+          "actionCount": 1,
+          "actionTypes": [
+            "fillRow"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to add a row header 'deal values' in cell A3. The rest of the cells from B3 to F3 will remain empty.",
+          "apiTime": 635,
+          "tokens": 323
+        },
+        {
+          "stepNumber": 5,
+          "success": true,
+          "prompt": "Add sample values: Lead 450000, Qualified 560000, Proposal 375000, Negotiation 240000, Closed Won 360000, Closed Lost 125000",
+          "actionCount": 12,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to add sample values to the spreadsheet. Each row represents a different category with its corresponding value.",
+          "apiTime": 1268,
+          "tokens": 576
+        },
+        {
+          "stepNumber": 6,
+          "success": true,
+          "prompt": "Calculate total pipeline value in G3",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to calculate the total pipeline value. This can be achieved by setting a formula in cell G3 to sum the values in cells G1 and G2.",
+          "apiTime": 657,
+          "tokens": 324
+        },
+        {
+          "stepNumber": 7,
+          "success": true,
+          "prompt": "Calculate win rate percentage in H3 (Closed Won / (Closed Won + Closed Lost))",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The formula calculates the win rate percentage by dividing the number of 'Closed Won' by the sum of 'Closed Won' and 'Closed Lost'. This formula is set in cell H3.",
+          "apiTime": 534,
+          "tokens": 342
+        }
+      ],
+      "summary": {
+        "planSteps": 7,
+        "accumulatedActions": 34,
+        "executedOperations": 34,
+        "planningPhase": false,
+        "steps": [
+          {
+            "step": 1,
+            "prompt": "Create pipeline stages: Lead, Qualified, Proposal, Negotiation, Closed Won, Closed Lost",
+            "actionCount": 6,
+            "reasoning": "Created pipeline stages in cells A1 to A6"
+          },
+          {
+            "step": 2,
+            "prompt": "Add count row headers in A2:F2",
+            "actionCount": 1,
+            "reasoning": "The user wants to add row headers that count from 1 to 6 in cells A2 through F2."
+          },
+          {
+            "step": 3,
+            "prompt": "Add sample counts: Lead 45, Qualified 28, Proposal 15, Negotiation 8, Closed Won 12, Closed Lost 5",
+            "actionCount": 12,
+            "reasoning": "Setting each cell value as per the user request"
+          },
+          {
+            "step": 4,
+            "prompt": "Add value row headers in A3:F3 for deal values",
+            "actionCount": 1,
+            "reasoning": "The user wants to add a row header 'deal values' in cell A3. The rest of the cells from B3 to F3 will remain empty."
+          },
+          {
+            "step": 5,
+            "prompt": "Add sample values: Lead 450000, Qualified 560000, Proposal 375000, Negotiation 240000, Closed Won 360000, Closed Lost 125000",
+            "actionCount": 12,
+            "reasoning": "The user wants to add sample values to the spreadsheet. Each row represents a different category with its corresponding value."
+          },
+          {
+            "step": 6,
+            "prompt": "Calculate total pipeline value in G3",
+            "actionCount": 1,
+            "reasoning": "The user wants to calculate the total pipeline value. This can be achieved by setting a formula in cell G3 to sum the values in cells G1 and G2."
+          },
+          {
+            "step": 7,
+            "prompt": "Calculate win rate percentage in H3 (Closed Won / (Closed Won + Closed Lost))",
+            "actionCount": 1,
+            "reasoning": "The formula calculates the win rate percentage by dividing the number of 'Closed Won' by the sum of 'Closed Won' and 'Closed Lost'. This formula is set in cell H3."
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "Budget Tracker (3 steps)",
+      "description": "Simple budget planning workflow",
+      "totalSteps": 3,
+      "totalActions": 14,
+      "totalApiTime": 1895,
+      "totalTokens": 1185,
+      "avgTimePerStep": 632,
+      "avgActionsPerStep": "4.7",
+      "executionTime": 0,
+      "operationsExecuted": 14,
+      "planningToExecutionRatio": "Infinity",
+      "allStepsSuccessful": true,
+      "stepResults": [
+        {
+          "stepNumber": 1,
+          "success": true,
+          "prompt": "Headers: Category, Budgeted, Actual, Variance",
+          "actionCount": 4,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user wants to set headers for a table. Each header is set in a cell in the first row.",
+          "apiTime": 466,
+          "tokens": 373
+        },
+        {
+          "stepNumber": 2,
+          "success": true,
+          "prompt": "Add categories: Marketing (10000, 9500), Operations (25000, 26500), R&D (15000, 14200)",
+          "actionCount": 9,
+          "actionTypes": [
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue",
+            "setCellValue"
+          ],
+          "confidence": 0.95,
+          "reasoning": "The user asked to add categories with specific values. The task is clear and simple.",
+          "apiTime": 756,
+          "tokens": 497
+        },
+        {
+          "stepNumber": 3,
+          "success": true,
+          "prompt": "Calculate variance for each category (Budgeted - Actual)",
+          "actionCount": 1,
+          "actionTypes": [
+            "setCellFormula"
+          ],
+          "confidence": 0.95,
+          "reasoning": "Set cell formula to calculate variance between budgeted and actual category",
+          "apiTime": 673,
+          "tokens": 315
+        }
+      ],
+      "summary": {
+        "planSteps": 3,
+        "accumulatedActions": 14,
+        "executedOperations": 14,
+        "planningPhase": false,
+        "steps": [
+          {
+            "step": 1,
+            "prompt": "Headers: Category, Budgeted, Actual, Variance",
+            "actionCount": 4,
+            "reasoning": "The user wants to set headers for a table. Each header is set in a cell in the first row."
+          },
+          {
+            "step": 2,
+            "prompt": "Add categories: Marketing (10000, 9500), Operations (25000, 26500), R&D (15000, 14200)",
+            "actionCount": 9,
+            "reasoning": "The user asked to add categories with specific values. The task is clear and simple."
+          },
+          {
+            "step": 3,
+            "prompt": "Calculate variance for each category (Budgeted - Actual)",
+            "actionCount": 1,
+            "reasoning": "Set cell formula to calculate variance between budgeted and actual category"
+          }
+        ]
+      }
+    }
+  ],
+  "analysis": {
+    "overall": {
+      "totalScenarios": 5,
+      "successfulScenarios": 4,
+      "totalSteps": 24,
+      "totalActions": 113,
+      "totalApiTime": 16632,
+      "totalTokens": 9935,
+      "totalOperations": 113
+    },
+    "performance": {
+      "avgStepsPerScenario": "4.8",
+      "avgActionsPerScenario": "22.6",
+      "avgTimePerScenario": 3326,
+      "avgTokensPerScenario": 1987,
+      "avgTimePerStep": 693,
+      "avgActionsPerStep": "4.7",
+      "avgPlanningToExecutionRatio": "Infinity"
+    },
+    "efficiency": {
+      "actionsPerToken": "0.0114",
+      "operationsPerSecond": 7,
+      "tokensPerStep": 414
+    }
+  }
+}
