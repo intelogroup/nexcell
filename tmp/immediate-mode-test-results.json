@@ -1,0 +1,343 @@
+{
+  "timestamp": "2025-10-19T22:17:39.201Z",
+  "mode": "immediate",
+  "model": "openai/gpt-4",
+  "totalTests": 10,
+  "passedTests": 7,
+  "failedTests": 3,
+  "tests": [
+    {
+      "name": "Simple immediate value",
+      "command": "set A1 to 100",
+      "success": true,
+      "apiTime": 3282,
+      "actionsGenerated": 1,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setCellValue",
+            "target": "A1",
+            "value": 100
+          }
+        ],
+        "explanation": "Set cell A1 to 100",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate formula calculation",
+      "command": "set A1 to 50, B1 to 30, and C1 to =A1+B1",
+      "success": true,
+      "apiTime": 4380,
+      "actionsGenerated": 3,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setCellValue",
+            "target": "A1",
+            "value": 50
+          },
+          {
+            "type": "setCellValue",
+            "target": "B1",
+            "value": 30
+          },
+          {
+            "type": "setCellFormula",
+            "target": "C1",
+            "value": "=A1+B1"
+          }
+        ],
+        "explanation": "Set cell A1 to 50, B1 to 30, and C1 to the formula A1+B1",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate range fill",
+      "command": "fill A1 to A5 with value 10",
+      "success": true,
+      "apiTime": 2887,
+      "actionsGenerated": 1,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "fillRange",
+            "target": "A1:A5",
+            "value": 10
+          }
+        ],
+        "explanation": "Filled cells A1 to A5 with value 10",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Multi-step with formula dependencies",
+      "command": "create a budget: Income in A1 with 5000, Expenses in A2 with 3200, and calculate Savings in A3 as the difference",
+      "success": true,
+      "apiTime": 6367,
+      "actionsGenerated": 6,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setCellValue",
+            "target": "A1",
+            "value": "Income"
+          },
+          {
+            "type": "setCellValue",
+            "target": "B1",
+            "value": 5000
+          },
+          {
+            "type": "setCellValue",
+            "target": "A2",
+            "value": "Expenses"
+          },
+          {
+            "type": "setCellValue",
+            "target": "B2",
+            "value": 3200
+          },
+          {
+            "type": "setCellValue",
+            "target": "A3",
+            "value": "Savings"
+          },
+          {
+            "type": "setCellFormula",
+            "target": "B3",
+            "value": "=B1-B2"
+          }
+        ],
+        "explanation": "Created a budget with Income, Expenses and Savings. Savings is calculated as the difference between Income and Expenses.",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate table creation",
+      "command": "create a 3-column table with headers Name, Age, City and add 2 sample rows",
+      "success": false,
+      "apiTime": 3803,
+      "actionsGenerated": 2,
+      "errors": [
+        "Validation failed: Table creation: 2 actions for immediate execution"
+      ],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "fillRow",
+            "target": "1",
+            "values": [
+              "Name",
+              "Age",
+              "City"
+            ]
+          },
+          {
+            "type": "setRange",
+            "target": "A2:C3",
+            "values": [
+              [
+                "John Doe",
+                30,
+                "New York"
+              ],
+              [
+                "Jane Doe",
+                28,
+                "Los Angeles"
+              ]
+            ]
+          }
+        ],
+        "explanation": "Created a 3-column table with headers Name, Age, City and added 2 sample rows",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate column formula propagation",
+      "command": "set A1 to 10, A2 to 20, A3 to 30, and fill B1:B3 with formulas that double the A column values",
+      "success": true,
+      "apiTime": 5263,
+      "actionsGenerated": 4,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setCellValue",
+            "target": "A1",
+            "value": 10
+          },
+          {
+            "type": "setCellValue",
+            "target": "A2",
+            "value": 20
+          },
+          {
+            "type": "setCellValue",
+            "target": "A3",
+            "value": 30
+          },
+          {
+            "type": "fillRange",
+            "target": "B1:B3",
+            "formula": "=A1*2"
+          }
+        ],
+        "explanation": "Set cells A1 to 10, A2 to 20, A3 to 30, and filled cells B1 to B3 with formulas that double the corresponding A column values",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate SUM calculation",
+      "command": "put 10, 20, 30, 40, 50 in A1 through A5, then calculate the sum in A6",
+      "success": false,
+      "apiTime": 4843,
+      "actionsGenerated": 2,
+      "errors": [
+        "Validation failed: SUM workflow: 2 actions for immediate execution"
+      ],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setRange",
+            "target": "A1:A5",
+            "values": [
+              [
+                10
+              ],
+              [
+                20
+              ],
+              [
+                30
+              ],
+              [
+                40
+              ],
+              [
+                50
+              ]
+            ]
+          },
+          {
+            "type": "setCellFormula",
+            "target": "A6",
+            "value": "=SUM(A1:A5)"
+          }
+        ],
+        "explanation": "Set values 10, 20, 30, 40, 50 in cells A1 through A5 respectively, then calculated the sum in cell A6",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate date handling",
+      "command": "set A1 to today's date and B1 to a formula that adds 30 days",
+      "success": true,
+      "apiTime": 3725,
+      "actionsGenerated": 2,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setCellValue",
+            "target": "A1",
+            "value": "=TODAY()"
+          },
+          {
+            "type": "setCellFormula",
+            "target": "B1",
+            "formula": "=A1+30"
+          }
+        ],
+        "explanation": "Set cell A1 to today's date and B1 to a formula that adds 30 days to A1",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Immediate complex workflow",
+      "command": "create a sales report: Headers in row 1 (Product, Price, Quantity, Total), add 3 product rows with sample data, and calculate totals with formulas in the Total column",
+      "success": false,
+      "apiTime": 6144,
+      "actionsGenerated": 3,
+      "errors": [
+        "Validation failed: Complex workflow: 3 actions for immediate execution"
+      ],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "fillRow",
+            "target": "1",
+            "values": [
+              "Product",
+              "Price",
+              "Quantity",
+              "Total"
+            ]
+          },
+          {
+            "type": "setRange",
+            "target": "A2:D4",
+            "values": [
+              [
+                "Product 1",
+                10,
+                5,
+                "=B2*C2"
+              ],
+              [
+                "Product 2",
+                20,
+                3,
+                "=B3*C3"
+              ],
+              [
+                "Product 3",
+                30,
+                2,
+                "=B4*C4"
+              ]
+            ]
+          },
+          {
+            "type": "setCellFormula",
+            "target": "D5",
+            "value": "=SUM(D2:D4)"
+          }
+        ],
+        "explanation": "Created headers in row 1, added 3 product rows with sample data in rows 2 to 4, and calculated totals with formulas in the Total column",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "Speed test - simple operation",
+      "command": "set B5 to 999",
+      "success": true,
+      "apiTime": 2291,
+      "actionsGenerated": 1,
+      "errors": [],
+      "aiResponse": {
+        "actions": [
+          {
+            "type": "setCellValue",
+            "target": "B5",
+            "value": 999
+          }
+        ],
+        "explanation": "Set cell B5 to 999",
+        "confidence": 0.95
+      }
+    }
+  ],
+  "performance": {
+    "totalTime": 42985,
+    "avgApiTime": 4298.5,
+    "avgTotalTime": 4298.5,
+    "minApiTime": 2291,
+    "maxApiTime": 6367
+  }
+}
