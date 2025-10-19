@@ -868,6 +868,26 @@ function applyInsertRow(
       });
     }
 
+    // Update conditionalFormats ranges
+    if (sheet.conditionalFormats && sheet.conditionalFormats.length > 0) {
+      sheet.conditionalFormats = sheet.conditionalFormats.map(cf => {
+        const { start, end } = parseRange(cf.range);
+        const s = parseAddress(start);
+        const e = parseAddress(end);
+        // Expand conditional format range if insert is inside (inclusive)
+        if (insertRow >= s.row && insertRow <= e.row) {
+          e.row += count;
+        } else {
+          if (s.row >= insertRow) s.row += count;
+          if (e.row >= insertRow) e.row += count;
+        }
+        return {
+          ...cf,
+          range: toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col),
+        };
+      });
+    }
+
   // Update workbook-level namedRanges using helper (handles strings and NamedRange objects)
   if (workbook.namedRanges) {
     for (const [name, ref] of Object.entries(workbook.namedRanges)) {
@@ -967,6 +987,45 @@ function applyDeleteRow(
       });
     }
 
+    // Update conditionalFormats ranges
+    if (sheet.conditionalFormats && sheet.conditionalFormats.length > 0) {
+      sheet.conditionalFormats = sheet.conditionalFormats
+        .map(cf => {
+          const { start, end } = parseRange(cf.range);
+          const s = parseAddress(start);
+          const e = parseAddress(end);
+          
+          // Shrink range if delete is inside
+          if (deleteRow >= s.row && deleteRow < s.row + (e.row - s.row + 1)) {
+            // Delete overlaps with range
+            if (deleteRow <= s.row && deleteRow + count > e.row) {
+              // Entire range is deleted
+              return null;
+            }
+            // Adjust the range
+            if (s.row >= deleteRow && s.row < deleteRow + count) {
+              s.row = deleteRow;
+            }
+            if (e.row >= deleteRow && e.row < deleteRow + count) {
+              e.row = deleteRow - 1;
+            }
+          }
+          
+          // Shift range if delete is above
+          if (s.row >= deleteRow + count) s.row -= count;
+          if (e.row >= deleteRow + count) e.row -= count;
+          
+          // Ensure valid range
+          if (s.row > e.row) return null;
+          
+          return {
+            ...cf,
+            range: toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col),
+          };
+        })
+        .filter((cf): cf is NonNullable<typeof cf> => cf !== null);
+    }
+
     if (workbook.namedRanges) {
       for (const [name, ref] of Object.entries(workbook.namedRanges)) {
         updateNamedRangeForRow(workbook, sheet.name, name, ref, deleteRow, count, false);
@@ -1058,6 +1117,26 @@ function applyInsertCol(
           if (e.col >= insertCol) e.col += count;
         }
         return toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
+      });
+    }
+
+    // Update conditionalFormats ranges
+    if (sheet.conditionalFormats && sheet.conditionalFormats.length > 0) {
+      sheet.conditionalFormats = sheet.conditionalFormats.map(cf => {
+        const { start, end } = parseRange(cf.range);
+        const s = parseAddress(start);
+        const e = parseAddress(end);
+        // Expand conditional format range if insert is inside (inclusive)
+        if (insertCol >= s.col && insertCol <= e.col) {
+          e.col += count;
+        } else {
+          if (s.col >= insertCol) s.col += count;
+          if (e.col >= insertCol) e.col += count;
+        }
+        return {
+          ...cf,
+          range: toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col),
+        };
       });
     }
 
@@ -1153,6 +1232,45 @@ function applyDeleteCol(
         if (e.col >= deleteCol) e.col -= count;
         return toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col);
       });
+    }
+
+    // Update conditionalFormats ranges
+    if (sheet.conditionalFormats && sheet.conditionalFormats.length > 0) {
+      sheet.conditionalFormats = sheet.conditionalFormats
+        .map(cf => {
+          const { start, end } = parseRange(cf.range);
+          const s = parseAddress(start);
+          const e = parseAddress(end);
+          
+          // Shrink range if delete is inside
+          if (deleteCol >= s.col && deleteCol < s.col + (e.col - s.col + 1)) {
+            // Delete overlaps with range
+            if (deleteCol <= s.col && deleteCol + count > e.col) {
+              // Entire range is deleted
+              return null;
+            }
+            // Adjust the range
+            if (s.col >= deleteCol && s.col < deleteCol + count) {
+              s.col = deleteCol;
+            }
+            if (e.col >= deleteCol && e.col < deleteCol + count) {
+              e.col = deleteCol - 1;
+            }
+          }
+          
+          // Shift range if delete is to the left
+          if (s.col >= deleteCol + count) s.col -= count;
+          if (e.col >= deleteCol + count) e.col -= count;
+          
+          // Ensure valid range
+          if (s.col > e.col) return null;
+          
+          return {
+            ...cf,
+            range: toAddress(s.row, s.col) + ':' + toAddress(e.row, e.col),
+          };
+        })
+        .filter((cf): cf is NonNullable<typeof cf> => cf !== null);
     }
 
     if (workbook.namedRanges) {

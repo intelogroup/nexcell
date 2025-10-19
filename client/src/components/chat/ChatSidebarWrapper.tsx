@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChatInterface } from './ChatInterface';
 import type { Message } from '@/lib/types';
-import { getSystemPrompt } from '@/lib/ai/systemPrompt';
+import { getSystemPrompt } from '@/lib/ai/enhancedPrompt';
 import { chatWithAI } from '@/lib/ai/aiService';
 
 /**
@@ -55,6 +55,21 @@ export default function ChatSidebarWrapper() {
         updatedHistory,
         systemPrompt
       );
+
+      // TODO: Parse AI response for WorkbookOperations and execute them
+      // When Phase 5 is complete, this is where we'll:
+      // 1. Extract WorkbookOperation[] from aiResponse
+      // 2. Create executor with current mode: new WorkbookOperationExecutor({ mode: currentMode })
+      // 3. If mode === 'plan': operations will be blocked with helpful error
+      // 4. If mode === 'act': operations execute immediately
+      // Example:
+      // const operations = extractOperations(aiResponse);
+      // if (operations.length > 0) {
+      //   const result = await executeOperations(operations, workbook, { mode: currentMode });
+      //   if (!result.success && result.errors.some(e => e.code === 'PLAN_MODE_BLOCKED')) {
+      //     // Show user they need to switch to act mode
+      //   }
+      // }
 
       // Add AI response
       const assistantMessage: Message = {

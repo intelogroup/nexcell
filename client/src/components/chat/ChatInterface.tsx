@@ -121,9 +121,9 @@ export function ChatInterface({
       {/* Chat header */}
       <div className="px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-gray-900 truncate">AI Assistant</h2>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold text-gray-900 truncate">AI Assistant</h2>
+                <p className="text-xs text-gray-600 mt-0.5 truncate">
               {mode === 'plan' ? 'Planning mode - Review before execution' : 'Acting mode - Commands execute immediately'}
             </p>
           </div>
@@ -137,7 +137,7 @@ export function ChatInterface({
               className={cn(
                 'px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200',
                 mode === 'plan' 
-                  ? 'bg-white text-accent-600 shadow-sm' 
+                  ? 'bg-white text-accent-700 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
               )}
             >
@@ -151,7 +151,7 @@ export function ChatInterface({
               className={cn(
                 'px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200',
                 mode === 'act' 
-                  ? 'bg-white text-accent-600 shadow-sm' 
+                  ? 'bg-white text-accent-700 shadow-sm' 
                   : 'text-gray-600 hover:text-gray-900'
               )}
             >
@@ -196,17 +196,17 @@ export function ChatInterface({
               {/* Message metadata */}
               <div className="flex items-center gap-2 px-1">
                 <span className={cn(
-                  "text-xs font-medium",
-                  message.role === 'user' ? 'text-accent-600' : 
-                  message.role === 'assistant' ? 'text-blue-600' : 
-                  'text-gray-500'
+                  'text-[11px] font-semibold tracking-wide',
+                  message.role === 'user' ? 'text-accent-700' :
+                  message.role === 'assistant' ? 'text-sky-700' :
+                  'text-gray-600'
                 )}>
                   {message.role === 'user' ? '👤 You' : 
                    message.role === 'assistant' ? '🤖 AI Assistant' : 
                    'ℹ️ System'}
                 </span>
                 <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-400">
+                <span className="text-[11px] text-gray-500">
                   {formatTimestamp(new Date(message.timestamp))}
                 </span>
               </div>
@@ -216,10 +216,13 @@ export function ChatInterface({
                 className={cn(
                   'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm break-words transition-all',
                   message.role === 'user'
-                    ? 'bg-accent-500 text-white rounded-br-md'
+                    // User bubble with light blue background and dark blue text for better contrast
+                    ? 'bg-accent-100 text-accent-900 border border-accent-200 rounded-br-md'
                     : message.role === 'system'
-                    ? 'bg-amber-50 text-amber-900 border border-amber-200 rounded-tl-md'
-                    : 'bg-white text-gray-900 border border-gray-200 rounded-tl-md'
+                    // Subtle system bubble with stronger border for readability
+                    ? 'bg-amber-50 text-amber-900 border border-amber-300 rounded-tl-md'
+                    // Assistant bubble with slight gray background and border for contrast
+                    : 'bg-gray-50 text-gray-900 border border-gray-200 rounded-tl-md'
                 )}
               >
                 {/* Message content */}
@@ -231,10 +234,10 @@ export function ChatInterface({
                 
                 {/* Action button for undo */}
                 {('action' in message && (message as any).action) && (
-                  <div className="mt-2 pt-2 border-t border-gray-100 flex gap-2 justify-end">
+                  <div className="mt-2 pt-2 border-t border-gray-200 flex gap-2 justify-end">
                     <button
                       onClick={() => onUndoMessage?.(message.id)}
-                      className="text-xs text-accent-600 hover:text-accent-700 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-1 rounded px-2 py-1"
+                      className="text-xs text-accent-700 hover:text-accent-800 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-1 rounded px-2 py-1"
                       aria-label="Undo this action"
                     >
                       ↶ Undo
@@ -254,10 +257,10 @@ export function ChatInterface({
               <span className="text-xs text-gray-400">•</span>
               <span className="text-xs text-gray-400">Thinking...</span>
             </div>
-            <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 text-accent-500 animate-spin" />
-                <span className="text-sm text-gray-600">Processing your request...</span>
+                <span className="text-sm text-gray-700">Processing your request...</span>
               </div>
             </div>
           </div>
@@ -290,11 +293,11 @@ export function ChatInterface({
               onKeyDown={handleKeyDown}
               placeholder={mode === 'plan' ? "Describe what you want to accomplish..." : "Type a command or question..."}
               className={cn(
-                "w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm",
-                "focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent",
-                "placeholder:text-gray-400 transition-all",
-                "min-h-[48px] max-h-[120px]",
-                isLoading && "opacity-50 cursor-not-allowed"
+                'w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm',
+                'focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent',
+                'placeholder:text-gray-500 transition-all',
+                'min-h-[48px] max-h-[120px]',
+                isLoading && 'opacity-50 cursor-not-allowed'
               )}
               rows={1}
               disabled={isLoading}
@@ -304,11 +307,11 @@ export function ChatInterface({
             type="submit"
             disabled={!input.trim() || isLoading}
             className={cn(
-              "h-12 w-12 rounded-xl flex items-center justify-center transition-all shadow-sm",
-              "focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2",
+              'h-12 w-12 rounded-xl flex items-center justify-center transition-all shadow-sm',
+              'focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2',
               input.trim() && !isLoading
-                ? "bg-accent-500 text-white hover:bg-accent-600 hover:shadow-md active:scale-95"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                ? 'bg-accent-600 text-white hover:bg-accent-700 hover:shadow-md active:scale-95'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             )}
             aria-label="Send message"
           >
@@ -326,7 +329,7 @@ export function ChatInterface({
             <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono ml-1">Shift+Enter</kbd> for new line
           </p>
           {mode === 'plan' && (
-            <div className="flex items-center gap-1 text-xs text-amber-600">
+            <div className="flex items-center gap-1 text-xs text-amber-700">
               <AlertCircle className="w-3 h-3" />
               <span>Plan mode active</span>
             </div>

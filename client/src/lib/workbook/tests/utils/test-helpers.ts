@@ -4,7 +4,14 @@
  */
 
 import type { WorkbookJSON, SheetJSON, Cell } from '../../types';
-import { createWorkbook as createEmptyWorkbook, addSheet, setCell as setCellUtil, getCell } from '../../utils';
+import { 
+  createWorkbook as createEmptyWorkbook, 
+  addSheet, 
+  setCell as setCellUtil, 
+  getCell,
+  parseAddress,
+  toAddress,
+} from '../../utils';
 import { computeWorkbook, type HydrationResult } from '../../hyperformula';
 import { applyOperations } from '../../operations';
 import { expect } from 'vitest';
@@ -247,37 +254,8 @@ export function benchmark(
 // Utility Helpers
 // ============================================================================
 
-/**
- * Convert row/col to address (1-based)
- */
-export function toAddress(row: number, col: number): string {
-  let colStr = '';
-  let c = col;
-  while (c > 0) {
-    const mod = (c - 1) % 26;
-    colStr = String.fromCharCode(65 + mod) + colStr;
-    c = Math.floor((c - mod) / 26);
-  }
-  return colStr + row;
-}
-
-/**
- * Parse address to row/col (1-based)
- */
-export function parseAddress(address: string): { row: number; col: number } {
-  const match = address.match(/^([A-Z]+)(\d+)$/);
-  if (!match) throw new Error(`Invalid address: ${address}`);
-  
-  const colStr = match[1];
-  const row = parseInt(match[2], 10);
-  
-  let col = 0;
-  for (let i = 0; i < colStr.length; i++) {
-    col = col * 26 + (colStr.charCodeAt(i) - 64);
-  }
-  
-  return { row, col };
-}
+// Note: parseAddress and toAddress are now imported from utils.ts
+// This eliminates code duplication and ensures consistency across the codebase
 
 /**
  * Generate a range of addresses
@@ -405,6 +383,51 @@ export function getErrorCells(wb: WorkbookJSON, sheetId: string): Array<{ addres
     }));
 }
 
+/**
+ * Assert that a cell has the expected formula
+ */
+export function assertCellFormula(
+  workbook: WorkbookJSON,
+  address: string,
+  expectedFormula: string,
+  sheetId?: string
+): void {
+  const targetSheetId = sheetId || workbook.sheets[0]?.id;
+  if (!targetSheetId) throw new Error('No sheet found in workbook');
+  
+  const cell = getCell(workbook, targetSheetId, address);
+  
+  // Normalize formulas for comparison (remove leading = if present)
+  const normalizedExpected = expectedFormula.startsWith('=') ? expectedFormula.slice(1) : expectedFormula;
+  const normalizedActual = cell?.formula ? 
+    (cell.formula.startsWith('=') ? cell.formula.slice(1) : cell.formula) : 
+    undefined;
+  
+  expect(normalizedActual).toBe(normalizedExpected);
+}
+
+/**
+ * Compute workbook and assert cell value
+ */
+export function computeAndAssert(
+  workbook: WorkbookJSON,
+  address: string,
+  expectedValue: any,
+  sheetId?: string
+): void {
+  const targetSheetId = sheetId || workbook.sheets[0]?.id;
+  if (!targetSheetId) throw new Error('No sheet found in workbook');
+  
+  // Compute workbook
+  computeWorkbook(workbook);
+  
+  // Assert cell value
+  assertCellValue(workbook, address, expectedValue, targetSheetId);
+}
+
+// Re-export imported utilities for convenience
+export { parseAddress, toAddress };
+
 export default {
   createTestWorkbook,
   createGridWorkbook,
@@ -425,4 +448,6 @@ export default {
   assertAllFormulasValid,
   getFormulaCells,
   getErrorCells,
+  assertCellFormula,
+  computeAndAssert,
 };

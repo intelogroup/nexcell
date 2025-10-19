@@ -4,6 +4,8 @@
 
 import type { WorkbookAction } from '@/lib/types';
 import { parseCellReference } from '@/lib/db/jsonWorkbook';
+import { detectUnsupportedRequest, logUnsupportedRequest } from './unsupportedDetector';
+import { buildQueryAwarePrompt } from './enhancedPrompt';
 
 export interface AICommand {
   intent: string;
@@ -250,17 +252,36 @@ export const EXAMPLE_COMMANDS = [
 ];
 
 /**
- * Chat with AI using OpenRouter
+ * Chat with AI using OpenRouter (with capability awareness)
  * @param userMessage - The user's message
  * @param conversationHistory - Previous conversation context
- * @param systemPrompt - System instructions for the AI
+ * @param systemPrompt - System instructions for the AI (optional, will use enhanced prompt if not provided)
+ * @param options - Additional options (mode, retryCount, etc.)
  * @returns AI response text
  */
 export async function chatWithAI(
   userMessage: string,
   conversationHistory: Array<{ role: string; content: string }> = [],
-  systemPrompt?: string
+  systemPrompt?: string,
+  options?: {
+    mode?: 'plan' | 'act';
+    retryCount?: number;
+    lastError?: string;
+  }
 ): Promise<string> {
+  // 🚀 STEP 1: Pre-check for known unsupported features (instant response, no API call)
+  const detection = detectUnsupportedRequest(userMessage);
+  
+  if (detection.isUnsupported && detection.response && detection.confidence > 0.8) {
+    // Log for analytics
+    if (detection.feature && detection.type) {
+      logUnsupportedRequest(detection.feature, detection.type, userMessage);
+    }
+    
+    // Return instant helpful response
+    return detection.response;
+  }
+  
   // Get API key from environment or localStorage
   const envKey = import.meta.env?.VITE_OPENROUTER_API_KEY;
   const storedKey = localStorage.getItem('openrouter_api_key');
@@ -288,8 +309,18 @@ export async function chatWithAI(
     };
 
     let systemMessage = systemPrompt;
+    
     if (isCasualGreeting(userMessage)) {
+      // Simple greeting - minimal prompt
       systemMessage = `You are a friendly, conversational assistant. Keep replies short and casual. Do NOT access or invent any workbook or user-specific data. If the user asks about spreadsheet functionality, ask a clarifying question instead.`;
+    } else if (!systemPrompt) {
+      // 🎯 STEP 2: Use capability-aware prompt if no custom prompt provided
+      systemMessage = buildQueryAwarePrompt({
+        userQuery: userMessage,
+        mode: options?.mode || 'act',
+        retryCount: options?.retryCount || 0,
+        lastError: options?.lastError,
+      });
     }
 
     const messages = [
@@ -307,7 +338,7 @@ export async function chatWithAI(
         'X-Title': 'Nexcell',
       },
       body: JSON.stringify({
-        model: import.meta.env.VITE_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet',
+        model: import.meta.env.VITE_OPENROUTER_MODEL || 'openai/gpt-4',
         temperature: 0.7,
         max_tokens: parseInt(import.meta.env.VITE_OPENROUTER_MAX_TOKENS || '2000'),
         messages,

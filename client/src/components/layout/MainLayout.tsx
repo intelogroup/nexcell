@@ -15,13 +15,108 @@ import { safeStringify } from '@/lib/workbook/utils';
 import { computeWorkbook } from '@/lib/workbook/hyperformula';
 import { EXAMPLE_COMMANDS, chatWithAI } from '@/lib/ai/aiService';
 import { convertToWorkbookActions } from '@/lib/ai/openrouter';
-import { getSystemPrompt } from '@/lib/ai/systemPrompt';
+import { getSystemPrompt } from '@/lib/ai/enhancedPrompt';
 import { extractWorkbookContext, formatContextForAI } from '@/lib/ai/workbookContext';
 import extractActionsFromReply from '@/lib/ai/actionExtractor';
+import { validateWorkbook, type ValidationResult } from '@/lib/ai/operations/validation';
 
 // Utility for logging AI interactions and effects
 function logAIInteraction(event: string, details: any) {
   console.log(`[AI-Workbook] ${event}:`, details);
+}
+
+/**
+ * Format validation result for AI feedback
+ * Creates a concise summary of errors/warnings for the AI to address
+ */
+function formatValidationForAI(result: ValidationResult): string {
+  if (result.isValid && result.warnings.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = ['⚠️ VALIDATION FEEDBACK:'];
+  
+  if (result.errors.length > 0) {
+    lines.push('\nERRORS (Must fix):');
+    result.errors.forEach((error, i) => {
+      const location = error.sheetName && error.cellAddress 
+        ? `${error.sheetName}!${error.cellAddress}` 
+        : error.sheetId || 'Unknown';
+      lines.push(`${i + 1}. [${error.category}] ${location}: ${error.message}`);
+      if (error.suggestion) {
+        lines.push(`   💡 Suggestion: ${error.suggestion}`);
+      }
+    });
+  }
+
+  if (result.warnings.length > 0) {
+    lines.push('\nWARNINGS (Should address):');
+    result.warnings.forEach((warning, i) => {
+      const location = warning.sheetName && warning.cellAddress 
+        ? `${warning.sheetName}!${warning.cellAddress}` 
+        : warning.sheetId || 'Unknown';
+      lines.push(`${i + 1}. [${warning.category}] ${location}: ${warning.message}`);
+    });
+  }
+
+  lines.push('\nPlease fix these issues and try again.');
+  
+  return lines.join('\n');
+}
+
+/**
+ * Format validation result for user display
+ * Creates a user-friendly summary
+ */
+function formatValidationForUser(result: ValidationResult): string {
+  if (result.isValid && result.warnings.length === 0 && result.suggestions.length === 0) {
+    return '✅ Validation passed! Your workbook looks good.';
+  }
+
+  const parts: string[] = [];
+  
+  if (result.errors.length > 0) {
+    parts.push(`❌ ${result.errors.length} error${result.errors.length !== 1 ? 's' : ''} found`);
+  }
+  
+  if (result.warnings.length > 0) {
+    parts.push(`⚠️ ${result.warnings.length} warning${result.warnings.length !== 1 ? 's' : ''}`);
+  }
+  
+  if (result.suggestions.length > 0) {
+    parts.push(`💡 ${result.suggestions.length} suggestion${result.suggestions.length !== 1 ? 's' : ''}`);
+  }
+
+  const summary = parts.join(', ');
+  
+  const lines: string[] = [summary];
+  
+  // Show first few errors with details
+  if (result.errors.length > 0) {
+    lines.push('\nErrors:');
+    result.errors.slice(0, 3).forEach(error => {
+      const location = error.sheetName && error.cellAddress 
+        ? `${error.sheetName}!${error.cellAddress}` 
+        : '';
+      lines.push(`• ${location ? location + ': ' : ''}${error.message}`);
+    });
+    if (result.errors.length > 3) {
+      lines.push(`  ... and ${result.errors.length - 3} more`);
+    }
+  }
+
+  // Show first few warnings
+  if (result.warnings.length > 0 && result.warnings.length <= 3) {
+    lines.push('\nWarnings:');
+    result.warnings.slice(0, 3).forEach(warning => {
+      const location = warning.sheetName && warning.cellAddress 
+        ? `${warning.sheetName}!${warning.cellAddress}` 
+        : '';
+      lines.push(`• ${location ? location + ': ' : ''}${warning.message}`);
+    });
+  }
+
+  return lines.join('\n');
 }
 
 export function MainLayout() {
@@ -42,6 +137,8 @@ export function MainLayout() {
 
   const [workbookName, setWorkbookName] = useState(() => workbook.meta.title || 'Untitled');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chatMode, setChatMode] = useState<'plan' | 'act'>('act'); // Track chat mode
+  const [activePlan, setActivePlan] = useState<string | null>(null); // Store plan from plan mode
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -72,6 +169,9 @@ export function MainLayout() {
   // Apply AI actions to workbook
 
   const handleSendMessage = useCallback(async (content: string) => {
+    // Capture current mode for this execution (avoid closure issues)
+    const currentChatMode: 'plan' | 'act' = chatMode;
+    
     const newMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -125,7 +225,7 @@ export function MainLayout() {
           history = prev.map(m => ({ role: m.role, content: m.content }));
           return prev;
         });
-        const reply = await chatWithAI(content, history);
+        const reply = await chatWithAI(content, history, undefined, { mode: currentChatMode });
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -182,17 +282,23 @@ export function MainLayout() {
         console.warn('Failed to extract workbook context for AI:', ctxErr);
       }
 
-      // Use the official system prompt in ACT mode so AI knows when to act
-      const systemPrompt = getSystemPrompt('act');
+      // Use the system prompt matching current mode so AI knows whether to plan or act
+      const systemPrompt = getSystemPrompt(currentChatMode);
 
       // Call chatWithAI (conversation-first)
-  // Build conversation history from latest messages snapshot
-  const conversationHistory = (() => messages.map(m => ({ role: m.role, content: m.content })))();
-  const aiReply = await chatWithAI(
-    content + '\n\n' + (workbookContextText ? `Workbook Context:\n${workbookContextText}` : ''),
-    conversationHistory,
-    systemPrompt
-  );
+      // Build conversation history from latest messages snapshot (last 50 for richer context)
+      const conversationHistory = (() => {
+        const allMessages = messages.map(m => ({ role: m.role, content: m.content }));
+        // Keep last 50 messages for context (increased from 10 for better context retention)
+        return allMessages.slice(-50);
+      })();
+      
+      const aiReply = await chatWithAI(
+        content + '\n\n' + (workbookContextText ? `Workbook Context:\n${workbookContextText}` : ''),
+        conversationHistory,
+        systemPrompt,
+        { mode: currentChatMode } // Pass mode option to chatWithAI
+      );
 
       // Remove thinking message
       setMessages((prev) => prev.filter((m) => m.id !== thinkingMessage.id));
@@ -207,11 +313,69 @@ export function MainLayout() {
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Try to extract structured actions from the assistant reply
+      console.log('[AI-Workbook] Raw AI reply:', aiReply);
       const actions = extractActionsFromReply(aiReply);
+      console.log('[AI-Workbook] Extracted actions result:', actions);
+      
       if (actions && actions.length > 0) {
-          console.log('[AI-Workbook] Extracted actions from AI reply:', actions);
+          console.log('[AI-Workbook] Processing', actions.length, 'actions:', actions);
 
-        // Convert AI actions to workbook operations using existing converter
+        // Check if we're in plan mode - block ALL execution (including sheet operations)
+        if (currentChatMode === 'plan') {
+          console.log('[AI-Workbook] ⚠️ Operations blocked: Chat is in PLAN mode');
+          
+          // Save the plan for later execution
+          const planSummary = `Planned operations:\n` +
+            actions.map(a => {
+              if (a.type === 'addSheet') return `• Create sheet "${a.sheetName}"`;
+              if (a.type === 'deleteSheet') return `• Delete sheet "${a.sheetName}"`;
+              if (a.type === 'renameSheet') return `• Rename "${a.oldName}" to "${a.newName}"`;
+              if (a.type === 'setCellValue') return `• Set ${a.target} to "${a.value}"`;
+              if (a.type === 'setCellFormula') return `• Set ${a.target} formula to "${a.formula}"`;
+              if (a.type === 'fillRange') return `• Fill range ${a.range?.start}:${a.range?.end}`;
+              if (a.type === 'clearRange') return `• Clear range ${a.range?.start}:${a.range?.end}`;
+              return `• ${a.type}`;
+            }).join('\n');
+          
+          setActivePlan(planSummary);
+          
+          const planBlockedMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            role: 'system',
+            content: `⚠️ Plan mode is active - operations were NOT executed.\n\n` +
+              planSummary +
+              `\n\n💡 Switch to ACT mode and I'll help you execute this plan.`,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, planBlockedMessage]);
+          return; // Exit early, don't execute
+        }
+
+        // Handle sheet operations (addSheet, deleteSheet, renameSheet)
+        for (const action of actions) {
+          if (action.type === 'addSheet') {
+            const newSheet = addNewSheet(action.sheetName);
+            console.log('[AI-Workbook] Created new sheet:', newSheet.name);
+          } else if (action.type === 'deleteSheet') {
+            if (action.sheetName) {
+              const sheet = workbook.sheets.find(s => s.name === action.sheetName);
+              if (sheet) {
+                deleteSheetById(sheet.id);
+                console.log('[AI-Workbook] Deleted sheet:', action.sheetName);
+              }
+            }
+          } else if (action.type === 'renameSheet') {
+            if (action.oldName && action.newName) {
+              const sheet = workbook.sheets.find(s => s.name === action.oldName);
+              if (sheet) {
+                renameSheet(sheet.id, action.newName);
+                console.log('[AI-Workbook] Renamed sheet:', action.oldName, '->', action.newName);
+              }
+            }
+          }
+        }
+
+        // Convert AI actions to workbook cell operations using existing converter
         const operations = convertToWorkbookActions(actions, {
           currentSheet: {
             cells: currentSheet?.cells || {},
@@ -219,12 +383,12 @@ export function MainLayout() {
           },
         });
 
-        console.log('[AI-Workbook] Converted operations:', operations);
+        console.log('[AI-Workbook] Converted cell operations:', operations);
 
-        // Apply operations in batch for better performance
+        // Apply cell operations in batch for better performance
           logAIInteraction('Workbook before operations', safeStringify(workbook));
           
-          // Batch all operations together to avoid multiple recomputes
+          // Batch all cell operations together to avoid multiple recomputes
           if (operations.length > 0) {
             try {
               console.log(`[AI-Workbook] Applying batch of ${operations.length} operations`);
@@ -261,14 +425,116 @@ export function MainLayout() {
 
           // Removed setTimeout recompute - operations.ts already handles eager compute with sync:true
 
-        // Optionally append a short confirmation to the assistant message
-        const confirmMessage: Message = {
+        // Phase 7.3: Validate workbook after operations
+        const validationResult = validateWorkbook(workbook);
+        logAIInteraction('Validation result', validationResult);
+
+        // Show validation results to user
+        const validationMessage: Message = {
           id: (Date.now() + 2).toString(),
           role: 'assistant',
-          content: `✓ Applied ${operations.length} operation(s) as requested.`,
+          content: `✓ Applied ${operations.length} operation(s).\n\n${formatValidationForUser(validationResult)}`,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, confirmMessage]);
+        setMessages((prev) => [...prev, validationMessage]);
+
+        // Clear the plan after successful execution in act mode
+        if (chatMode === 'act' && activePlan && operations.length > 0) {
+          setActivePlan(null);
+        }
+
+        // If validation found errors/warnings, send feedback to AI for auto-correction
+        if (!validationResult.isValid || validationResult.warnings.length > 0) {
+          const aiValidationFeedback = formatValidationForAI(validationResult);
+          
+          if (aiValidationFeedback && validationResult.errors.length > 0) {
+            // Only auto-request fix for errors, not warnings
+            logAIInteraction('Sending validation feedback to AI for auto-correction', aiValidationFeedback);
+            
+            const fixRequestMessage: Message = {
+              id: (Date.now() + 3).toString(),
+              role: 'system',
+              content: 'Validation errors detected. Requesting AI to fix issues...',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, fixRequestMessage]);
+
+            // Send validation feedback back to AI
+            try {
+              const conversationHistory = messages.map(m => ({ role: m.role, content: m.content }));
+              const fixPrompt = `${aiValidationFeedback}\n\nPlease fix these validation errors in the workbook.`;
+              
+              // Auto-fix should use current mode - respects user's plan/act preference
+              const fixReply = await chatWithAI(fixPrompt, conversationHistory, getSystemPrompt(currentChatMode), { mode: currentChatMode });
+              
+              // Remove the "requesting fix" message
+              setMessages((prev) => prev.filter((m) => m.id !== fixRequestMessage.id));
+              
+              // Add AI's fix response
+              const fixResponseMessage: Message = {
+                id: (Date.now() + 4).toString(),
+                role: 'assistant',
+                content: fixReply,
+                timestamp: new Date(),
+              };
+              setMessages((prev) => [...prev, fixResponseMessage]);
+              
+              // Try to extract and apply fix actions
+              const fixActions = extractActionsFromReply(fixReply);
+              if (fixActions && fixActions.length > 0) {
+                const fixOperations = convertToWorkbookActions(fixActions, {
+                  currentSheet: {
+                    cells: currentSheet?.cells || {},
+                    grid: currentSheet?.grid,
+                  },
+                });
+                
+                if (fixOperations.length > 0) {
+                  // Check plan mode before applying fix operations too
+                  if (currentChatMode === 'plan') {
+                    console.log('[AI-Workbook] ⚠️ Fix operations blocked: Chat is in PLAN mode');
+                    const fixBlockedMessage: Message = {
+                      id: (Date.now() + 5).toString(),
+                      role: 'system',
+                      content: `⚠️ Plan mode is active - fix operations were NOT executed.\n\nSwitch to ACT mode to apply fixes.`,
+                      timestamp: new Date(),
+                    };
+                    setMessages((prev) => [...prev, fixBlockedMessage]);
+                  } else {
+                    const batchFixCells = fixOperations.map(op => ({
+                      address: op.address,
+                      cell: op.cell,
+                    }));
+                    batchSetCells(batchFixCells);
+                    
+                    // Validate again after fixes
+                    const revalidationResult = validateWorkbook(workbook);
+                    if (revalidationResult.isValid) {
+                      const successMessage: Message = {
+                        id: (Date.now() + 5).toString(),
+                        role: 'assistant',
+                        content: '✅ Validation errors fixed successfully!',
+                        timestamp: new Date(),
+                      };
+                      setMessages((prev) => [...prev, successMessage]);
+                    } else {
+                      logAIInteraction('Re-validation still has issues', revalidationResult);
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              logAIInteraction('Auto-correction failed', err);
+              const errorMessage: Message = {
+                id: (Date.now() + 4).toString(),
+                role: 'system',
+                content: '⚠️ Unable to auto-correct validation errors. Please review and fix manually.',
+                timestamp: new Date(),
+              };
+              setMessages((prev) => [...prev.filter((m) => m.id !== fixRequestMessage.id), errorMessage]);
+            }
+          }
+        }
       } else {
         logAIInteraction('No actions extracted from AI reply', { reply: aiReply });
       }
@@ -282,7 +548,28 @@ export function MainLayout() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
     }
-  }, [workbook, currentSheetId, currentSheet, setCell, clearCell, recompute, messages]);
+  }, [workbook, currentSheetId, currentSheet, setCell, clearCell, recompute, messages, chatMode, batchSetCells, addNewSheet, renameSheet, deleteSheetById]);
+
+  const handleModeChange = useCallback((newMode: 'plan' | 'act') => {
+    // If switching from plan to act with an active plan, offer to execute it
+    if (chatMode === 'plan' && newMode === 'act' && activePlan) {
+      const executePrompt = `I'm ready to execute the plan. Here's what we discussed:\n\n${activePlan}\n\nShould I proceed with these changes?`;
+      const message: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: executePrompt,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, message]);
+    }
+    
+    // If switching to plan mode, clear any previous plan
+    if (newMode === 'plan') {
+      setActivePlan(null);
+    }
+    
+    setChatMode(newMode);
+  }, [chatMode, activePlan, setMessages]);
 
   const handleCellEdit = useCallback((row: number, col: number, value: string) => {
     const address = toAddress(row + 1, col + 1); // Convert 0-based to 1-based
@@ -374,6 +661,8 @@ export function MainLayout() {
           <ChatInterface 
             messages={messages}
             onSendMessage={handleSendMessage}
+            initialMode={chatMode}
+            onModeChange={handleModeChange}
           />
         </div>
 

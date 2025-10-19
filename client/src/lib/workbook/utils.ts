@@ -448,3 +448,35 @@ export function addressToHf(address: string): { row: number; col: number } {
   const { row, col } = parseAddress(address);
   return { row: row - 1, col: col - 1 };
 }
+
+/**
+ * Normalize a formula by ensuring it starts with '='
+ * 
+ * @param formula - Formula to normalize (with or without leading '=')
+ * @returns Normalized formula with leading '='
+ * 
+ * @example
+ * normalizeFormula('SUM(A1:A5)') // '=SUM(A1:A5)'
+ * normalizeFormula('=SUM(A1:A5)') // '=SUM(A1:A5)'
+ * normalizeFormula('  =A1*2  ') // '=A1*2'
+ */
+export function normalizeFormula(formula: string): string {
+  const trimmed = formula.trim();
+  if (!trimmed) {
+    throw new Error('Formula cannot be empty');
+  }
+  return trimmed.startsWith('=') ? trimmed : `=${trimmed}`;
+}
+
+/**
+ * Get error message from unknown error type
+ * 
+ * @param error - Error object or other type
+ * @returns Error message string
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}

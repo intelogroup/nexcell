@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseAICommand, chatWithAI, describeAction } from '../aiService';
-import { getSystemPrompt } from '../systemPrompt';
+import { getSystemPrompt } from '../enhancedPrompt';
 
 describe('AI Service - Command Parsing', () => {
   describe('parseAICommand', () => {
@@ -212,31 +212,31 @@ describe('AI Service - System Prompt Behavior', () => {
     const prompt = getSystemPrompt('act');
     
     expect(prompt).toContain('conversational');
-    expect(prompt).toContain('greeting');
-    expect(prompt).toContain('clarification');
+    expect(prompt).toContain('friendly'); // Updated from 'greeting'
+    expect(prompt).toContain('clarifying questions');
   });
 
   it('should emphasize brainstorming in plan mode', () => {
     const prompt = getSystemPrompt('plan');
     
-    expect(prompt).toContain('brainstorm');
+    expect(prompt).toContain('brainstorming');
     expect(prompt).toContain('DO NOT execute');
-    expect(prompt).toContain('collaborative');
+    expect(prompt).toContain('Discuss ideas'); // Updated from 'collaborative'
   });
 
   it('should include error detection guidelines', () => {
     const prompt = getSystemPrompt('act');
     
-    expect(prompt).toContain('circular reference');
-    expect(prompt).toContain('division by zero');
-    expect(prompt).toContain('WARNING');
+    expect(prompt).toContain('Error Handling'); // Updated to match new prompt
+    expect(prompt).toContain('unsupported');
+    expect(prompt).toContain('alternatives');
   });
 
   it('should specify when to act vs when to chat', () => {
     const prompt = getSystemPrompt('act');
     
-    expect(prompt).toContain('Just Chat');
-    expect(prompt).toContain('Take Action');
-    expect(prompt).toContain('clear, specific instructions');
+    expect(prompt).toContain('ACT MODE'); // Updated to match new prompt
+    expect(prompt).toContain('execute operations');
+    expect(prompt).toContain('spreadsheet');
   });
 });

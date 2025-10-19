@@ -376,7 +376,7 @@ export function CanvasRenderer(props: CanvasRendererProps) {
                       borderBottom: '1px solid #e5e7eb',
                     }}
                     className={cn(
-                      'px-2 flex items-center text-sm cursor-cell',
+                      'px-2 flex items-center text-sm cursor-cell text-gray-900',
                       isSelected && 'ring-2 ring-accent-500 ring-inset bg-accent-50',
                       !isSelected && 'hover:bg-gray-50'
                     )}
